@@ -61,6 +61,7 @@ CMAKE_OPTS=""
 cmake -DCMAKE_TOOLCHAIN_FILE="$KOS_CMAKE_TOOLCHAIN" \
       -G "Unix Makefiles" \
       -Wno-dev \
+      -D__DREAMCAST__=1 \
       -DSDL2IMAGE_BACKEND_STB=TRUE \
       -DCMAKE_VERBOSE_MAKEFILE=ON \
       -DSDL2_LIBRARY=/opt/toolchains/dc/kos/addons/lib/dreamcast/libSDL2.a \

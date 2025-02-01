@@ -84,3 +84,41 @@ if(SDL2IMAGE_TESTS_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}/installed-tests/${PROJECT_NAME}"
     )
 endif()
+
+# Check for Dreamcast and adjust accordingly
+if(__DREAMCAST__)
+    # # Disable LTO for Dreamcast
+    # string(REPLACE "-flto=auto" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+    # string(REPLACE "-flto=auto" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    # add_compile_options(-fno-lto)
+
+    # Set up resources for Dreamcast
+    set(DREAMCAST_APPS
+        testimage
+        # Add other apps here if needed
+    )
+
+    foreach(APP IN LISTS DREAMCAST_APPS)
+        if(${APP} STREQUAL "testimage")
+            set(APP_RESOURCE_FILES "palette.bmp" "sample.png" "sample.jpg" "sample.bmp" "sample.tga" "sample.cur" "palette.gif" "sample.ico")
+        endif()
+
+        if(APP_RESOURCE_FILES)
+            # Set up romdisk directory for the app
+            set(KOS_ROMDISK_DIR "${CMAKE_CURRENT_BINARY_DIR}/romdisk_${APP}")
+            
+            # Ensure resources directory exists
+            file(MAKE_DIRECTORY "${KOS_ROMDISK_DIR}")
+
+            # Copy resource files to the romdisk directory
+            foreach(RESOURCE_FILE ${APP_RESOURCE_FILES})
+                file(COPY ${RESOURCE_FILE} DESTINATION "${KOS_ROMDISK_DIR}")
+            endforeach()
+
+            # Use kos_add_romdisk function from KOS Dreamcast CMake utilities
+            kos_add_romdisk(${APP} "${KOS_ROMDISK_DIR}" ${APP})
+        else()
+            message(WARNING "App ${APP} does not have resource files defined!")
+        endif()
+    endforeach()
+endif()
