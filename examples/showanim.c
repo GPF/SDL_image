@@ -22,7 +22,7 @@
 #include "SDL.h"
 #include "SDL_image.h"
 #ifdef __DREAMCAST__
-#define ANIM_FILE "/rd/sample.bmp" 
+#define ANIM_FILE "/rd/giphy.gif" 
 #endif
 
 static void draw_background(SDL_Renderer *renderer, int w, int h)
@@ -83,12 +83,12 @@ int main(int argc, char *argv[])
         return(2);
     }
 
+#ifndef __DREAMCAST__
     if (SDL_CreateWindowAndRenderer(0, 0, flags, &window, &renderer) < 0) {
         SDL_Log("SDL_CreateWindowAndRenderer() failed: %s\n", SDL_GetError());
         return(2);
     }
 
-#ifndef __DREAMCAST__
     for ( i=1; argv[i]; ++i ) {
         if ( SDL_strcmp(argv[i], "-fullscreen") == 0 ) {
             continue;
@@ -107,6 +107,9 @@ int main(int argc, char *argv[])
             continue;
         }        
 #else
+        window = SDL_CreateWindow("SDL2 Displaying Image", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN);
+        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC); 
+
         anim = IMG_LoadAnimation(ANIM_FILE);
         SDL_Log("Loaded %s\n", ANIM_FILE);
         if (!anim) {
@@ -115,8 +118,8 @@ int main(int argc, char *argv[])
         }
 #endif        
 
-        w = anim->w;
-        h = anim->h;
+        w = 640;
+        h = 480;
 
         textures = (SDL_Texture **)SDL_calloc(anim->count, sizeof(*textures));
         if (!textures) {
@@ -182,7 +185,9 @@ int main(int argc, char *argv[])
             draw_background(renderer, w, h);
 
             /* Display the image */
-            SDL_RenderCopy(renderer, textures[current_frame], NULL, NULL);
+            // SDL_RenderCopy(renderer, textures[current_frame], NULL, NULL);
+            SDL_Rect dest_rect = { 0, 0, 640, 480 };          
+             SDL_RenderCopyEx(renderer, textures[current_frame], NULL, &dest_rect, 0, NULL, 0);
             SDL_RenderPresent(renderer);
 
             if (anim->delays[current_frame]) {

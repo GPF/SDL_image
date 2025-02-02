@@ -84,12 +84,12 @@ int main(int argc, char *argv[])
         SDL_Log("SDL_Init(SDL_INIT_VIDEO) failed: %s\n", SDL_GetError());
         return(2);
     }
-
+#ifndef __DREAMCAST__
     if (SDL_CreateWindowAndRenderer(0, 0, flags, &window, &renderer) < 0) {
         SDL_Log("SDL_CreateWindowAndRenderer() failed: %s\n", SDL_GetError());
         return(2);
     }
-#ifndef __DREAMCAST__
+
     for ( i=1; argv[i]; ++i ) {
         if ( SDL_strcmp(argv[i], "-fullscreen") == 0 ) {
             continue;
@@ -113,6 +113,9 @@ int main(int argc, char *argv[])
             continue;
         }        
 #else
+        window = SDL_CreateWindow("SDL2 Displaying Image", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_SHOWN);
+        renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_PRESENTVSYNC); 
+
         texture = IMG_LoadTexture(renderer, BACKGROUND_FILE);
         if (!texture) {
             SDL_Log("Couldn't load %s: %s\n", BACKGROUND_FILE, SDL_GetError());

@@ -1013,7 +1013,7 @@ if(SDL2IMAGE_SAMPLES)
 
             foreach(APP IN LISTS DREAMCAST_APPS)
                 if(${APP} STREQUAL "showanim")
-                    set(APP_RESOURCE_FILES "test/sample.bmp")
+                    set(APP_RESOURCE_FILES "test/giphy.gif")
                 elseif(${APP} STREQUAL "showimage")
                     set(APP_RESOURCE_FILES "test/sample.bmp")
                 endif()
