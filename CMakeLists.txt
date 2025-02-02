@@ -981,16 +981,61 @@ if(SDL2IMAGE_SAMPLES)
             target_link_libraries(${prog} PRIVATE mingw32)
             target_link_options(${prog} PRIVATE -mwindows)
         endif()
+
+        # Link the SDL2_image target for the program
         target_link_libraries(${prog} PRIVATE SDL2_image::${sdl2_image_export_name})
+
         if(TARGET SDL2::SDL2main)
             target_link_libraries(${prog} PRIVATE SDL2::SDL2main)
         endif()
+
         target_link_libraries(${prog} PRIVATE ${sdl2_target_name})
 
+        # Install the program if SDL2IMAGE_SAMPLES_INSTALL is enabled
         if(SDL2IMAGE_SAMPLES_INSTALL)
             install(TARGETS ${prog}
                 RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
             )
+        endif()
+
+        # Dreamcast specific handling
+        if(__DREAMCAST__)
+            # Disable LTO for Dreamcast
+            # string(REPLACE "-flto=auto" "" CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+            # string(REPLACE "-flto=auto" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+            # add_compile_options(-fno-lto)
+
+            # Set up resources for Dreamcast
+            set(DREAMCAST_APPS
+                showanim
+                showimage
+            )
+
+            foreach(APP IN LISTS DREAMCAST_APPS)
+                if(${APP} STREQUAL "showanim")
+                    set(APP_RESOURCE_FILES "test/sample.bmp")
+                elseif(${APP} STREQUAL "showimage")
+                    set(APP_RESOURCE_FILES "test/sample.bmp")
+                endif()
+
+                if(APP_RESOURCE_FILES)
+                    # Set up romdisk directory for the app
+                    set(KOS_ROMDISK_DIR "${CMAKE_CURRENT_BINARY_DIR}/romdisk_${APP}")
+                    
+                    # Ensure resources directory exists
+                    file(MAKE_DIRECTORY "${KOS_ROMDISK_DIR}")
+
+                    # Copy resource files to the romdisk directory
+                    foreach(RESOURCE_FILE ${APP_RESOURCE_FILES})
+                        file(COPY ${RESOURCE_FILE} DESTINATION "${KOS_ROMDISK_DIR}")
+                    endforeach()
+
+                    # Use kos_add_romdisk function from KOS Dreamcast CMake utilities
+                    kos_add_romdisk(${APP} "${KOS_ROMDISK_DIR}" ${APP})
+                else()
+                    message(WARNING "App ${APP} does not have resource files defined!")
+                endif()
+            endforeach()
         endif()
     endforeach()
 endif()

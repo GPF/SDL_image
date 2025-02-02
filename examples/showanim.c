@@ -21,9 +21,10 @@
 
 #include "SDL.h"
 #include "SDL_image.h"
+#ifdef __DREAMCAST__
+#define ANIM_FILE "/rd/sample.bmp" 
+#endif
 
-
-/* Draw a Gimpish background pattern to show transparency in the image */
 static void draw_background(SDL_Renderer *renderer, int w, int h)
 {
     SDL_Color col[2] = {
@@ -60,13 +61,16 @@ int main(int argc, char *argv[])
     int current_frame, delay;
     SDL_Event event;
 
+#ifndef __DREAMCAST__
     /* Check command line usage */
     if ( ! argv[1] ) {
         SDL_Log("Usage: %s [-fullscreen] <image_file> ...\n", argv[0]);
         return(1);
     }
-
     flags = SDL_WINDOW_HIDDEN;
+#else
+    flags = SDL_WINDOW_FULLSCREEN;    
+#endif    
     for ( i=1; argv[i]; ++i ) {
         if ( SDL_strcmp(argv[i], "-fullscreen") == 0 ) {
             SDL_ShowCursor(0);
@@ -84,6 +88,7 @@ int main(int argc, char *argv[])
         return(2);
     }
 
+#ifndef __DREAMCAST__
     for ( i=1; argv[i]; ++i ) {
         if ( SDL_strcmp(argv[i], "-fullscreen") == 0 ) {
             continue;
@@ -95,11 +100,21 @@ int main(int argc, char *argv[])
         }
 
         /* Open the image file */
+        
         anim = IMG_LoadAnimation(argv[i]);
         if (!anim) {
             SDL_Log("Couldn't load %s: %s\n", argv[i], SDL_GetError());
             continue;
+        }        
+#else
+        anim = IMG_LoadAnimation(ANIM_FILE);
+        SDL_Log("Loaded %s\n", ANIM_FILE);
+        if (!anim) {
+            SDL_Log("Couldn't load %s: %s\n", ANIM_FILE, SDL_GetError());
+            return(2);
         }
+#endif        
+
         w = anim->w;
         h = anim->h;
 
@@ -107,7 +122,11 @@ int main(int argc, char *argv[])
         if (!textures) {
             SDL_Log("Couldn't allocate textures\n");
             IMG_FreeAnimation(anim);
+#ifndef __DREAMCAST__            
             continue;
+#else
+            return(2);
+#endif            
         }
         for (j = 0; j < anim->count; ++j) {
             textures[j] = SDL_CreateTextureFromSurface(renderer, anim->frames[j]);
@@ -184,8 +203,10 @@ int main(int argc, char *argv[])
             SDL_DestroyTexture(textures[j]);
         }
         IMG_FreeAnimation(anim);
-    }
 
+#ifndef __DREAMCAST__        
+    }
+#endif
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
 

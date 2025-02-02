@@ -21,7 +21,9 @@
 
 #include "SDL.h"
 #include "SDL_image.h"
-
+#ifdef __DREAMCAST__
+#define BACKGROUND_FILE "/rd/sample.bmp" 
+#endif
 
 /* Draw a Gimpish background pattern to show transparency in the image */
 static void draw_background(SDL_Renderer *renderer, int w, int h)
@@ -60,13 +62,17 @@ int main(int argc, char *argv[])
     SDL_Event event;
     const char *saveFile = NULL;
 
+#ifndef __DREAMCAST__
     /* Check command line usage */
     if ( ! argv[1] ) {
         SDL_Log("Usage: %s [-fullscreen] [-save file.png] <image_file> ...\n", argv[0]);
         return(1);
     }
-
-    flags = SDL_WINDOW_HIDDEN;
+    flags = SDL_WINDOW_HIDDEN;    
+#else
+    flags = SDL_WINDOW_FULLSCREEN;
+#endif
+    
     for ( i=1; argv[i]; ++i ) {
         if ( SDL_strcmp(argv[i], "-fullscreen") == 0 ) {
             SDL_ShowCursor(0);
@@ -83,7 +89,7 @@ int main(int argc, char *argv[])
         SDL_Log("SDL_CreateWindowAndRenderer() failed: %s\n", SDL_GetError());
         return(2);
     }
-
+#ifndef __DREAMCAST__
     for ( i=1; argv[i]; ++i ) {
         if ( SDL_strcmp(argv[i], "-fullscreen") == 0 ) {
             continue;
@@ -105,7 +111,15 @@ int main(int argc, char *argv[])
         if (!texture) {
             SDL_Log("Couldn't load %s: %s\n", argv[i], SDL_GetError());
             continue;
+        }        
+#else
+        texture = IMG_LoadTexture(renderer, BACKGROUND_FILE);
+        if (!texture) {
+            SDL_Log("Couldn't load %s: %s\n", BACKGROUND_FILE, SDL_GetError());
+            return(2);
         }
+#endif                
+
         SDL_QueryTexture(texture, NULL, NULL, &w, &h);
 
         /* Save the image file, if desired */
@@ -184,8 +198,9 @@ int main(int argc, char *argv[])
             SDL_Delay(100);
         }
         SDL_DestroyTexture(texture);
+#ifndef __DREAMCAST__         
     }
-
+#endif
 
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
