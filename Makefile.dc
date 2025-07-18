@@ -2,8 +2,7 @@ TARGET=libSDLPVR_image.a
 
 KOS_CFLAGS+= -I$(KOS_BASE)/addons/include/SDL -I$(KOS_PORTS)/include/png -DLOAD_BMP=YES -DLOAD_GIF=YES -DLOAD_LBM=YES -DLOAD_PCX=YES -DLOAD_PNM=YES -DLOAD_TGA=YES -DLOAD_XCF=YES -DLOAD_XXX=YES -DLOAD_PNG=YES -DLOAD_PVR=1 -I../kos-ports/include/SDL -I../include/zlib-1.2.3 -I../libpng-1.2.8
 
-all: $(TARGET)
-
+all: $(TARGET) install-headers
 
 include $(KOS_BASE)/Makefile.rules
 
@@ -13,6 +12,11 @@ $(TARGET): $(OBJS)
 	rm -f $(KOS_BASE)/addons/lib/dreamcast/$(TARGET)
 	$(KOS_AR) rcs $(KOS_BASE)/addons/lib/dreamcast/$(TARGET) $(OBJS)
 	$(KOS_RANLIB) $(KOS_BASE)/addons/lib/dreamcast/$(TARGET)
+
+install-headers:
+	@mkdir -p $(KOS_BASE)/addons/include/SDL
+	cp SDL_image.h $(KOS_BASE)/addons/include/SDL/
+	cp SegaPVRImage.h $(KOS_BASE)/addons/include/SDL/
 
 clean:
 	rm -f $(OBJS)
