@@ -224,6 +224,9 @@ AS_IF([test "x$enable_neon" != "xno"], [
         *android*) AC_CHECK_HEADERS([cpu-features.h]) ;;
       esac
       ;;
+    aarch64*|arm64*)
+      AC_DEFINE(WEBP_HAVE_NEON, [1], [Set to 1 if NEON is supported])
+      ;;
   esac
   AC_SUBST([NEON_FLAGS])])
 
@@ -736,7 +739,8 @@ AC_CONFIG_FILES([Makefile src/Makefile man/Makefile \
                  src/libwebp.pc src/libwebpdecoder.pc \
                  src/demux/libwebpdemux.pc src/mux/libwebpmux.pc])
 
-
+dnl fix exports from MinGW builds
+AC_CONFIG_COMMANDS_POST([$SED -i 's/-DDLL_EXPORT/-DWEBP_DLL/' config.status])
 AC_OUTPUT
 
 AC_MSG_NOTICE([
