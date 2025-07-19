@@ -1216,6 +1216,11 @@ if(SDLIMAGE_SAMPLES)
         target_link_libraries(${TARGET} PRIVATE SDL3_image::${sdl3_image_target_name})
         target_link_libraries(${TARGET} PRIVATE ${sdl3_target_name})
 
+        # Dreamcast-specific linking
+        if(__DREAMCAST__)
+            target_link_libraries(${TARGET} PRIVATE GL pthread)
+        endif()
+
         if(SDLIMAGE_SAMPLES_INSTALL)
             install(TARGETS ${TARGET}
                 RUNTIME DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}/installed-tests/SDL3_image"
@@ -1227,6 +1232,34 @@ if(SDLIMAGE_SAMPLES)
     endfunction()
     add_sdl_image_example_executable(showanim examples/showanim.c)
     add_sdl_image_example_executable(showimage examples/showimage.c)
+  # Dreamcast ROMDISK Setup
+    if(__DREAMCAST__)
+        foreach(APP showimage showanim)
+            if(${APP} STREQUAL "showimage")
+                set(APP_RESOURCE_FILES
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/palette.bmp"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/sample.png"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/sample.jpg"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/sample.bmp"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/sample.tga"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/sample.cur"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/palette.gif"
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/sample.ico"
+                )
+            elseif(${APP} STREQUAL "showanim")
+                set(APP_RESOURCE_FILES
+                    "${CMAKE_CURRENT_SOURCE_DIR}/test/palette.gif"
+                )
+            endif()
+
+            set(KOS_ROMDISK_DIR "${CMAKE_CURRENT_BINARY_DIR}/romdisk_${APP}")
+            file(MAKE_DIRECTORY "${KOS_ROMDISK_DIR}")
+            foreach(RESOURCE_FILE ${APP_RESOURCE_FILES})
+                file(COPY ${RESOURCE_FILE} DESTINATION "${KOS_ROMDISK_DIR}")
+            endforeach()
+            kos_add_romdisk(${APP} "${KOS_ROMDISK_DIR}" ${APP})
+        endforeach()
+    endif()
 endif()
 
 if(SDLIMAGE_TESTS)

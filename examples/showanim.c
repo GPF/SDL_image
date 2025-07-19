@@ -22,7 +22,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 #include <SDL3_image/SDL_image.h>
-
+#ifdef __DREAMCAST__
+#include <stdio.h>
+#endif
 
 /* Draw a Gimpish background pattern to show transparency in the image */
 static void draw_background(SDL_Renderer *renderer, int w, int h)
@@ -64,6 +66,13 @@ int main(int argc, char *argv[])
 
     (void)argc;
 
+#ifdef __DREAMCAST__
+    char dc_path[256];
+    snprintf(dc_path, sizeof(dc_path), "%spalette.gif", SDL_GetBasePath());
+    const char *default_argv[] = { argv[0], dc_path, NULL };
+    argv = (char **)default_argv;
+    argc = 2;
+#endif
     /* Check command line usage */
     if ( ! argv[1] ) {
         SDL_Log("Usage: %s [-fullscreen] <image_file> ...\n", argv[0]);

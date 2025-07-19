@@ -41,6 +41,11 @@ function(add_sdl_image_test_executable TARGET)
     sdl_add_warning_options(${TARGET} WARNING_AS_ERROR ${SDLIMAGE_WERROR})
     target_link_libraries(${TARGET} PRIVATE SDL3_image::SDL3_image SDL3::SDL3_test SDL3::SDL3)
 
+    # Add Dreamcast-specific libraries
+    if(__DREAMCAST__)
+        target_link_libraries(${TARGET} PRIVATE GL pthread)
+    endif()
+
     add_test(
         NAME ${TARGET}
         COMMAND ${TARGET}
@@ -84,3 +89,51 @@ if(SDLIMAGE_TESTS_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBEXECDIR}/installed-tests/${PROJECT_NAME}"
     )
 endif()
+
+# ----------------------
+# Dreamcast-specific setup
+# ----------------------
+if(__DREAMCAST__)
+    # Collect resource files for the romdisk
+    set(APP_RESOURCE_FILES
+        "${CMAKE_CURRENT_SOURCE_DIR}/palette.bmp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/palette.gif"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.avif"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.bmp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.cur"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.ico"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.jpg"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.jxl"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.pcx"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.png"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.pnm"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.qoi"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.tga"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.tif"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.webp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.xcf"
+        "${CMAKE_CURRENT_SOURCE_DIR}/sample.xpm"
+        "${CMAKE_CURRENT_SOURCE_DIR}/svg-class.bmp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/svg-class.svg"
+        "${CMAKE_CURRENT_SOURCE_DIR}/svg.bmp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/svg.svg"
+        "${CMAKE_CURRENT_SOURCE_DIR}/svg64.bmp"
+    )
+
+    # Create the ROMDISK directory
+    set(KOS_ROMDISK_DIR "${CMAKE_CURRENT_BINARY_DIR}/romdisk")
+    file(MAKE_DIRECTORY "${KOS_ROMDISK_DIR}")
+
+    # Copy the resource files to the romdisk directory
+    foreach(RESOURCE_FILE ${APP_RESOURCE_FILES})
+        if(EXISTS ${RESOURCE_FILE})
+            file(COPY ${RESOURCE_FILE} DESTINATION "${KOS_ROMDISK_DIR}")
+        else()
+            message(WARNING "Resource file ${RESOURCE_FILE} not found.")
+        endif()
+    endforeach()
+
+    # Add a romdisk for the testimage executable
+    kos_add_romdisk(testimage "${KOS_ROMDISK_DIR}" testimage)
+endif()
+
