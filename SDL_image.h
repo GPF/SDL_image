@@ -105,6 +105,9 @@ extern DECLSPEC int SDLCALL IMG_isXCF(SDL_RWops *src);
 extern DECLSPEC int SDLCALL IMG_isXPM(SDL_RWops *src);
 extern DECLSPEC int SDLCALL IMG_isXV(SDL_RWops *src);
 extern DECLSPEC int SDLCALL IMG_isWEBP(SDL_RWops *src);
+#ifdef __DREAMCAST__
+extern DECLSPEC int SDLCALL IMG_isPVR(SDL_RWops *src);
+#endif
 
 /* Individual loading functions */
 extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadICO_RW(SDL_RWops *src);
@@ -122,6 +125,9 @@ extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadXCF_RW(SDL_RWops *src);
 extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadXPM_RW(SDL_RWops *src);
 extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadXV_RW(SDL_RWops *src);
 extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadWEBP_RW(SDL_RWops *src);
+#ifdef __DREAMCAST__
+extern DECLSPEC SDL_Surface * SDLCALL IMG_LoadPVR_RW(SDL_RWops *src);
+#endif
 
 extern DECLSPEC SDL_Surface * SDLCALL IMG_ReadXPMFromArray(char **xpm);
 

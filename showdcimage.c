@@ -7,6 +7,12 @@
 #include <stdio.h>
 #include "SDL/SDL_dreamcast.h"
 
+// gpf@GPF:~/code/dreamcast/SDL_image$ /opt/toolchains/dc/kos/utils/pvrtex/pvrtex -i romdisk/Troy2024.png -f rgb565 -o romdisk/Troy2024.pvr
+// Reading input...
+// Twiddling...
+// Converting as uncompressed...
+// Writing .PVR to "romdisk/Troy2024.pvr"...
+
 int main(int argc, char *argv[]) {
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -15,8 +21,8 @@ int main(int argc, char *argv[]) {
     }
 
     // Set the image path (romdisk)
-    const char *image_path = "/rd/Troy2024.png";
-    printf("Loading PNG: %s\n", image_path);
+    const char *image_path = "/rd/Troy2024.pvr";
+    printf("Loading PVR: %s\n", image_path);
 
     // Load the PNG using SDL_image
     SDL_Surface *image = IMG_Load(image_path);

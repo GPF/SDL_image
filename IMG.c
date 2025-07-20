@@ -37,6 +37,7 @@ static struct {
 } supported[] = {
 	/* keep magicless formats first */
 	{ "TGA", NULL,      IMG_LoadTGA_RW },
+	{ "PVR", IMG_isPVR, IMG_LoadPVR_RW },	
 	{ "CUR", IMG_isCUR, IMG_LoadCUR_RW },
 	{ "ICO", IMG_isICO, IMG_LoadICO_RW },
 	{ "BMP", IMG_isBMP, IMG_LoadBMP_RW },
@@ -70,8 +71,10 @@ extern void IMG_QuitPNG();
 extern int IMG_InitTIF();
 extern void IMG_QuitTIF();
 
+#ifndef __DREAMCAST__
 extern int IMG_InitWEBP();
 extern void IMG_QuitWEBP();
+#endif
 
 static int initialized = 0;
 
@@ -94,11 +97,13 @@ int IMG_Init(int flags)
 			result |= IMG_INIT_TIF;
 		}
 	}
+#ifndef __DREAMCAST__	
 	if (flags & IMG_INIT_WEBP) {
 		if ((initialized & IMG_INIT_WEBP) || IMG_InitWEBP() == 0) {
 			result |= IMG_INIT_WEBP;
 		}
 	}
+#endif
 	initialized |= result;
 
 	return (initialized);
