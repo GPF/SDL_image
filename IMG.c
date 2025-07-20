@@ -49,8 +49,11 @@ static struct {
 	{ "TIF", IMG_isTIF, IMG_LoadTIF_RW },
 	{ "XCF", IMG_isXCF, IMG_LoadXCF_RW },
 	{ "XPM", IMG_isXPM, IMG_LoadXPM_RW },
+#ifndef __DREAMCAST__
+	{ "WEBP", IMG_isWEBP, IMG_LoadWEBP_RW },	
 	{ "XV",  IMG_isXV,  IMG_LoadXV_RW  },
 	{ "WEBP", IMG_isWEBP, IMG_LoadWEBP_RW },
+#endif	
 };
 
 const SDL_version *IMG_Linked_Version(void)
@@ -112,9 +115,11 @@ void IMG_Quit()
 	if (initialized & IMG_INIT_TIF) {
 		IMG_QuitTIF();
 	}
+#ifndef __DREAMCAST__	
 	if (initialized & IMG_INIT_WEBP) {
 		IMG_QuitWEBP();
 	}
+#endif	
 	initialized = 0;
 }
 

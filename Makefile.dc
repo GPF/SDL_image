@@ -1,22 +1,50 @@
-TARGET=libSDLPVR_image.a
+#
+# Makefile for libSDLPVR_image.a + testimage.elf (Dreamcast)
+#
 
-KOS_CFLAGS+= -I$(KOS_BASE)/addons/include/SDL -I$(KOS_PORTS)/include/png -DLOAD_BMP=YES -DLOAD_GIF=YES -DLOAD_LBM=YES -DLOAD_PCX=YES -DLOAD_PNM=YES -DLOAD_TGA=YES -DLOAD_XCF=YES -DLOAD_XXX=YES -DLOAD_PNG=YES -DLOAD_PVR=1 -I../kos-ports/include/SDL -I../include/zlib-1.2.3 -I../libpng-1.2.8
+# Targets
+LIB_TARGET = libSDLPVR_image.a
+TEST_TARGET = testimage.elf
 
-all: $(TARGET) install-headers
+# ROM disk setup
+KOS_ROMDISK_DIR = romdisk
+
+# Object files
+OBJS = IMG_gif.o IMG_jpg.o IMG_bmp.o IMG_lbm.o IMG_png.o \
+       IMG_tga.o IMG_xcf.o IMG_xxx.o IMG_pcx.o IMG_pnm.o \
+       IMG_tif.o IMG_xpm.o IMG.o IMG_pvr.o
+TEST_OBJS = showdcimage.o romdisk.o
+
+# Default target
+all: $(LIB_TARGET) $(TEST_TARGET)
 
 include $(KOS_BASE)/Makefile.rules
 
-OBJS = IMG_gif.o IMG_jpg.o IMG_bmp.o IMG_lbm.o IMG_png.o  IMG_tga.o  IMG_xcf.o  IMG_xxx.o IMG_pcx.o  IMG_pnm.o  IMG_tif.o  IMG_xpm.o IMG.o IMG_pvr.o
+# Compiler flags
+KOS_CFLAGS += -D__DREAMCAST__=1 -I$(KOS_BASE)/addons/include/SDL \
+              -I$(KOS_PORTS)/include/png \
+              -DLOAD_BMP=1 -DLOAD_GIF=1 -DLOAD_LBM=1 \
+              -DLOAD_PCX=1 -DLOAD_PNM=1 -DLOAD_TGA=1 \
+              -DLOAD_XCF=1 -DLOAD_XXX=1 -DLOAD_PNG=1 \
+              -DLOAD_PVR=1
 
-$(TARGET): $(OBJS)
-	rm -f $(KOS_BASE)/addons/lib/dreamcast/$(TARGET)
-	$(KOS_AR) rcs $(KOS_BASE)/addons/lib/dreamcast/$(TARGET) $(OBJS)
-	$(KOS_RANLIB) $(KOS_BASE)/addons/lib/dreamcast/$(TARGET)
+# Library build
+$(LIB_TARGET): $(OBJS)
+	@echo "Building $(LIB_TARGET)"
+	rm -f $(KOS_BASE)/addons/lib/dreamcast/$(LIB_TARGET)
+	$(KOS_AR) rcs $(KOS_BASE)/addons/lib/dreamcast/$(LIB_TARGET) $(OBJS)
+	$(KOS_RANLIB) $(KOS_BASE)/addons/lib/dreamcast/$(LIB_TARGET)
 
-install-headers:
-	@mkdir -p $(KOS_BASE)/addons/include/SDL
-	cp SDL_image.h $(KOS_BASE)/addons/include/SDL/
-	cp SegaPVRImage.h $(KOS_BASE)/addons/include/SDL/
+# Test ELF build
+$(TEST_TARGET): $(TEST_OBJS)
+	kos-cc -o $(TEST_TARGET) $(TEST_OBJS) \
+		-L$(KOS_BASE)/addons/lib/dreamcast \
+		-lSDLPVR_image -lSDL -lpng -lz -lm
+
+run: $(TEST_TARGET)
+	flycast $(TEST_TARGET)
 
 clean:
-	rm -f $(OBJS)
+	-rm -f $(OBJS) $(TEST_OBJS) $(LIB_TARGET) $(TEST_TARGET) romdisk.*
+
+.PHONY: all clean run
