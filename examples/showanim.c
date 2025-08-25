@@ -55,21 +55,19 @@ static void draw_background(SDL_Renderer *renderer, int w, int h)
 static void SaveAnimation(IMG_Animation *anim, const char *file)
 {
     int i;
-    Uint64 pts = 0;
-    IMG_AnimationStream *stream = IMG_CreateAnimationStream(file);
-    if (!stream) {
+    IMG_AnimationEncoder *encoder = IMG_CreateAnimationEncoder(file);
+    if (!encoder) {
         SDL_Log("Couldn't save anim: %s\n", SDL_GetError());
         return;
     }
 
     for (i = 0; i < anim->count; ++i) {
-        if (!IMG_AddAnimationFrame(stream, anim->frames[i], pts)) {
+        if (!IMG_AddAnimationEncoderFrame(encoder, anim->frames[i], anim->delays[i])) {
             SDL_Log("Couldn't add anim frame: %s\n", SDL_GetError());
             break;
         }
-        pts += anim->delays[i];
     }
-    IMG_CloseAnimationStream(stream);
+    IMG_CloseAnimationEncoder(encoder);
 }
 
 int main(int argc, char *argv[])
@@ -227,6 +225,7 @@ int main(int argc, char *argv[])
         for (j = 0; j < anim->count; ++j) {
             SDL_DestroyTexture(textures[j]);
         }
+        SDL_free(textures);
         IMG_FreeAnimation(anim);
     }
 

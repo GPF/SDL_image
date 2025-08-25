@@ -22,16 +22,18 @@
 /* This is a AVIF image file loading framework */
 
 #include <SDL3_image/SDL_image.h>
+#include "IMG_anim_encoder.h"
+#include "IMG_anim_decoder.h"
+#include "xmlman.h"
 
 /* We'll have AVIF save support by default */
-#if !defined(SDL_IMAGE_SAVE_AVIF)
-#  define SDL_IMAGE_SAVE_AVIF 1
+#if !defined(SAVE_AVIF)
+#define SAVE_AVIF 1
 #endif
 
 #ifdef LOAD_AVIF
 
 #include <avif/avif.h>
-#include <limits.h> /* for INT_MAX */
 
 
 /*
@@ -71,6 +73,9 @@ static struct {
     void (*avifRGBImageSetDefaults)(avifRGBImage * rgb, const avifImage * image);
     void (*avifRWDataFree)(avifRWData * raw);
     const char * (*avifResultToString)(avifResult res);
+
+    // XMP metadata support
+    avifResult (*avifImageSetMetadataXMP)(avifImage * image, const uint8_t * xmp, size_t xmpSize);
 } lib;
 
 #ifdef LOAD_AVIF_DYNAMIC
@@ -113,6 +118,9 @@ static bool IMG_InitAVIF(void)
         FUNCTION_LOADER(avifRGBImageSetDefaults, void (*)(avifRGBImage * rgb, const avifImage * image))
         FUNCTION_LOADER(avifRWDataFree, void (*)(avifRWData * raw))
         FUNCTION_LOADER(avifResultToString, const char * (*)(avifResult res))
+
+        // XMP metadata support
+        FUNCTION_LOADER(avifImageSetMetadataXMP, avifResult (*)(avifImage * image, const uint8_t * xmp, size_t xmpSize))
     }
     ++lib.loaded;
 
@@ -543,6 +551,7 @@ static bool IMG_SaveAVIF_IO_libavif(SDL_Surface *surface, SDL_IOStream *dst, int
     maxCLL = (Uint16)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_MAXCLL_NUMBER, 0);
     maxFALL = (Uint16)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_MAXFALL_NUMBER, 0);
 
+    SDL_zero(rgb);
     image = lib.avifImageCreate(surface->w, surface->h, 10, AVIF_PIXEL_FORMAT_YUV444);
     if (!image) {
         SDL_SetError("Couldn't create AVIF YUV image");
@@ -554,7 +563,6 @@ static bool IMG_SaveAVIF_IO_libavif(SDL_Surface *surface, SDL_IOStream *dst, int
     image->clli.maxCLL = maxCLL;
     image->clli.maxPALL = maxFALL;
 
-    SDL_zero(rgb);
     lib.avifRGBImageSetDefaults(&rgb, image);
 
     if (SDL_ISPIXELFORMAT_10BIT(surface->format)) {
@@ -705,7 +713,7 @@ done:
 #else
 
 /* We don't have any way to save AVIF files */
-#undef SDL_IMAGE_SAVE_AVIF
+#undef SAVE_AVIF
 
 /* See if an image is contained in a data source */
 bool IMG_isAVIF(SDL_IOStream *src)
@@ -741,7 +749,7 @@ bool IMG_SaveAVIF_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio, int 
         return SDL_SetError("Passed NULL dst");
     }
 
-#ifdef SDL_IMAGE_SAVE_AVIF
+#ifdef SAVE_AVIF
     if (!result) {
         result = IMG_SaveAVIF_IO_libavif(surface, dst, quality);
     }
@@ -756,3 +764,878 @@ bool IMG_SaveAVIF_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio, int 
     }
     return result;
 }
+
+#ifdef LOAD_AVIF
+
+static void SetHDRProperties(SDL_Surface *surface, const avifImage *image)
+{
+    // Standard HDR constants
+    const float DEFAULT_PQ_SDR_WHITE_POINT = 203.0f;
+    const uint16_t DEFAULT_PQ_MAXCLL = 1000;
+    uint16_t maxCLL = DEFAULT_PQ_MAXCLL;
+
+    SDL_PropertiesID props = SDL_GetSurfaceProperties(surface);
+
+    // Set colorspace first
+    SDL_Colorspace colorspace = SDL_DEFINE_COLORSPACE(SDL_COLOR_TYPE_RGB,
+                                                    SDL_COLOR_RANGE_FULL,
+                                                    image->colorPrimaries,
+                                                    image->transferCharacteristics,
+                                                    image->matrixCoefficients,
+                                                    SDL_CHROMA_LOCATION_NONE);
+    SDL_SetSurfaceColorspace(surface, colorspace);
+
+    // Check if this is an HDR image by transfer function
+    bool isHDR = (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084 ||
+                 image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_HLG);
+
+    if (isHDR) {
+        // Use metadata if available
+        if (image->clli.maxCLL > 0) {
+            maxCLL = image->clli.maxCLL;
+            SDL_SetNumberProperty(props, SDL_PROP_SURFACE_MAXCLL_NUMBER, image->clli.maxCLL);
+        } else {
+            // Default values based on common HDR mastering practices
+            SDL_SetNumberProperty(props, SDL_PROP_SURFACE_MAXCLL_NUMBER, DEFAULT_PQ_MAXCLL);
+        }
+
+        if (image->clli.maxPALL > 0) {
+            SDL_SetNumberProperty(props, SDL_PROP_SURFACE_MAXFALL_NUMBER, image->clli.maxPALL);
+        } else {
+            // A reasonable default for MaxFALL
+            SDL_SetNumberProperty(props, SDL_PROP_SURFACE_MAXFALL_NUMBER, DEFAULT_PQ_MAXCLL / 4);
+        }
+
+        // HDR properties needed for proper tone mapping
+        SDL_SetFloatProperty(props, SDL_PROP_SURFACE_SDR_WHITE_POINT_FLOAT, DEFAULT_PQ_SDR_WHITE_POINT);
+        SDL_SetFloatProperty(props, SDL_PROP_SURFACE_HDR_HEADROOM_FLOAT, (float)maxCLL / DEFAULT_PQ_SDR_WHITE_POINT);
+    }
+}
+
+IMG_Animation *IMG_LoadAVIFAnimation_IO(SDL_IOStream *src)
+{
+  return IMG_DecodeAsAnimation(src, "avifs", 0);
+}
+
+struct IMG_AnimationDecoderContext
+{
+    avifDecoder *decoder;             /* AVIF decoder instance */
+    avifIO io;                        /* IO context for the decoder */
+    avifIOContext ioContext;          /* Context data for IO operations */
+    Sint64 start_pos;                 /* Starting position in the stream */
+
+    int current_frame;                /* Current frame index */
+    int total_frames;                 /* Total number of frames in the animation */
+
+    int width;                        /* Width of the animation */
+    int height;                       /* Height of the animation */
+};
+
+static bool IMG_AnimationDecoderReset_Internal(IMG_AnimationDecoder *decoder)
+{
+    IMG_AnimationDecoderContext *ctx = decoder->ctx;
+
+    // Reset the decoder
+    if (ctx->decoder) {
+        lib.avifDecoderDestroy(ctx->decoder);
+        ctx->decoder = NULL;
+    }
+
+    // Reset stream position
+    if (SDL_SeekIO(decoder->src, ctx->start_pos, SDL_IO_SEEK_SET) < 0) {
+        return SDL_SetError("Failed to seek to beginning of AVIF file");
+    }
+
+    // Recreate the decoder
+    ctx->decoder = lib.avifDecoderCreate();
+    if (!ctx->decoder) {
+        return SDL_SetError("Couldn't create AVIF decoder");
+    }
+
+    // Be permissive to decode as many frames as possible
+    ctx->decoder->strictFlags = AVIF_STRICT_DISABLED;
+
+    // Set up IO
+    if (ctx->ioContext.data) {
+        SDL_free(ctx->ioContext.data);
+    }
+
+    ctx->ioContext.src = decoder->src;
+    ctx->ioContext.start = ctx->start_pos;
+    ctx->ioContext.data = NULL;
+    ctx->ioContext.size = 0;
+
+    ctx->io.destroy = DestroyAVIFIO;
+    ctx->io.read = ReadAVIFIO;
+    ctx->io.data = &ctx->ioContext;
+    lib.avifDecoderSetIO(ctx->decoder, &ctx->io);
+
+    // Reset state
+    ctx->current_frame = 0;
+
+    // Need to re-parse the animation if we reset
+    avifResult result = lib.avifDecoderParse(ctx->decoder);
+    if (result != AVIF_RESULT_OK) {
+        return SDL_SetError("Couldn't re-parse AVIF animation after reset: %s", lib.avifResultToString(result));
+    }
+
+    return true;
+}
+
+static bool IMG_AnimationDecoderGetNextFrame_Internal(IMG_AnimationDecoder *decoder, SDL_Surface **frame, Uint64 *duration)
+{
+    IMG_AnimationDecoderContext *ctx = decoder->ctx;
+    avifResult result;
+
+    if (ctx->total_frames - ctx->current_frame < 1) {
+        decoder->status = IMG_DECODER_STATUS_COMPLETE;
+        return false;
+    }
+
+    result = lib.avifDecoderNextImage(ctx->decoder);
+    if (result != AVIF_RESULT_OK) {
+        if (result == AVIF_RESULT_NO_IMAGES_REMAINING) {
+            // This shouldn't happen here, but handle it gracefully
+            decoder->status = IMG_DECODER_STATUS_COMPLETE;
+            return false;
+        }
+
+        return SDL_SetError("Couldn't get AVIF frame %d: %s", ctx->current_frame + 1, lib.avifResultToString(result));
+    }
+
+    avifImage *image = ctx->decoder->image;
+    SDL_Surface *frame_surface = NULL;
+
+    if (image->depth == 16) {
+        // Handle 16-bit depth
+        avifRGBImage rgb;
+        SDL_zero(rgb);
+
+        rgb.width = image->width;
+        rgb.height = image->height;
+        rgb.depth = 16;
+        rgb.format = AVIF_RGB_FORMAT_RGBA;
+
+        frame_surface = SDL_CreateSurface(image->width, image->height, SDL_PIXELFORMAT_RGBA64);
+        if (!frame_surface) {
+            return SDL_SetError("Couldn't create 16-bit surface for AVIF frame");
+        }
+
+        rgb.pixels = (uint8_t *)frame_surface->pixels;
+        rgb.rowBytes = (uint32_t)frame_surface->pitch;
+        rgb.ignoreAlpha = false;
+
+        result = lib.avifImageYUVToRGB(image, &rgb);
+        if (result != AVIF_RESULT_OK) {
+            SDL_DestroySurface(frame_surface);
+            return SDL_SetError("Couldn't convert 16-bit AVIF image to RGB: %s", lib.avifResultToString(result));
+        }
+
+        // Set HDR properties if needed
+        SetHDRProperties(frame_surface, image);
+    } else if (image->transferCharacteristics == AVIF_TRANSFER_CHARACTERISTICS_SMPTE2084) {
+        // Handle HDR PQ image
+        if (image->matrixCoefficients == AVIF_MATRIX_COEFFICIENTS_IDENTITY &&
+            image->yuvFormat == AVIF_PIXEL_FORMAT_YUV444) {
+            if (image->depth == 10) {
+                frame_surface = SDL_CreateSurface(image->width, image->height, SDL_PIXELFORMAT_XBGR2101010);
+                if (frame_surface) {
+                    if (ConvertGBR444toXBGR2101010(image, frame_surface) < 0) {
+                        SDL_DestroySurface(frame_surface);
+                        frame_surface = NULL;
+                    }
+                }
+            }
+        }
+
+        if (!frame_surface) {
+            avifRGBImage rgb;
+            SDL_zero(rgb);
+
+            rgb.width = image->width;
+            rgb.height = image->height;
+            rgb.depth = 16;
+            rgb.format = AVIF_RGB_FORMAT_RGB;
+            rgb.rowBytes = (uint32_t)image->width * 3 * sizeof(Uint16);
+            rgb.pixels = (uint8_t *)SDL_malloc(image->height * rgb.rowBytes);
+            if (!rgb.pixels) {
+                return SDL_SetError("Out of memory for AVIF RGB pixels");
+            }
+
+            result = lib.avifImageYUVToRGB(image, &rgb);
+            if (result != AVIF_RESULT_OK) {
+                SDL_free(rgb.pixels);
+                return SDL_SetError("Couldn't convert AVIF image to RGB: %s", lib.avifResultToString(result));
+            }
+
+            frame_surface = SDL_CreateSurface(image->width, image->height, SDL_PIXELFORMAT_XBGR2101010);
+            if (frame_surface) {
+                ConvertRGB16toXBGR2101010(&rgb, frame_surface);
+            }
+            SDL_free(rgb.pixels);
+        }
+
+        if (frame_surface) {
+            SetHDRProperties(frame_surface, image);
+        }
+    } else {
+        frame_surface = SDL_CreateSurface(image->width, image->height, SDL_PIXELFORMAT_RGBA32);
+        if (!frame_surface) {
+            return SDL_SetError("Couldn't create surface for AVIF frame");
+        }
+
+        avifRGBImage rgb;
+        SDL_zero(rgb);
+
+        rgb.width = frame_surface->w;
+        rgb.height = frame_surface->h;
+        rgb.depth = 8;
+
+#if SDL_BYTEORDER == SDL_LIL_ENDIAN
+        rgb.format = AVIF_RGB_FORMAT_RGBA;
+#else
+        rgb.format = AVIF_RGB_FORMAT_ABGR;
+#endif
+
+        rgb.ignoreAlpha = false;
+        rgb.pixels = (uint8_t *)frame_surface->pixels;
+        rgb.rowBytes = (uint32_t)frame_surface->pitch;
+
+        result = lib.avifImageYUVToRGB(image, &rgb);
+        if (result != AVIF_RESULT_OK) {
+            SDL_DestroySurface(frame_surface);
+            return SDL_SetError("Couldn't convert AVIF image to RGB: %s", lib.avifResultToString(result));
+        }
+
+        SDL_Colorspace colorspace = SDL_DEFINE_COLORSPACE(SDL_COLOR_TYPE_RGB,
+                                                          SDL_COLOR_RANGE_FULL,
+                                                          image->colorPrimaries,
+                                                          image->transferCharacteristics,
+                                                          image->matrixCoefficients,
+                                                          SDL_CHROMA_LOCATION_NONE);
+        SDL_SetSurfaceColorspace(frame_surface, colorspace);
+    }
+
+    *duration = ctx->decoder->imageTiming.durationInTimescales * decoder->timebase_numerator;
+
+    ctx->current_frame++;
+
+    *frame = frame_surface;
+    return true;
+}
+
+static bool IMG_AnimationDecoderClose_Internal(IMG_AnimationDecoder *decoder)
+{
+    IMG_AnimationDecoderContext *ctx = decoder->ctx;
+
+    if (ctx->decoder) {
+        lib.avifDecoderDestroy(ctx->decoder);
+        ctx->decoder = NULL;
+    }
+
+    if (ctx->ioContext.data) {
+        SDL_free(ctx->ioContext.data);
+        ctx->ioContext.data = NULL;
+        ctx->ioContext.size = 0;
+    }
+
+    SDL_free(ctx);
+    decoder->ctx = NULL;
+    return true;
+}
+
+bool IMG_CreateAVIFAnimationDecoder(IMG_AnimationDecoder *decoder, SDL_PropertiesID props)
+{
+    if (!IMG_InitAVIF()) {
+        return false;
+    }
+
+    IMG_AnimationDecoderContext *ctx = (IMG_AnimationDecoderContext *)SDL_calloc(1, sizeof(*ctx));
+    if (!ctx) {
+        return SDL_SetError("Out of memory for AVIF decoder context");
+    }
+
+    ctx->start_pos = SDL_TellIO(decoder->src);
+    if (ctx->start_pos < 0) {
+        SDL_free(ctx);
+        return SDL_SetError("Failed to get current stream position");
+    }
+
+    ctx->decoder = lib.avifDecoderCreate();
+    if (!ctx->decoder) {
+        SDL_free(ctx);
+        return SDL_SetError("Couldn't create AVIF decoder");
+    }
+
+    ctx->decoder->strictFlags = AVIF_STRICT_DISABLED;
+    ctx->decoder->timescale = decoder->timebase_denominator;
+
+    ctx->ioContext.src = decoder->src;
+    ctx->ioContext.start = ctx->start_pos;
+    ctx->ioContext.data = NULL;
+    ctx->ioContext.size = 0;
+
+    ctx->io.destroy = DestroyAVIFIO;
+    ctx->io.read = ReadAVIFIO;
+    ctx->io.data = &ctx->ioContext;
+    lib.avifDecoderSetIO(ctx->decoder, &ctx->io);
+
+    ctx->current_frame = 0;
+
+    int maxLCores = SDL_GetNumLogicalCPUCores();
+    int maxThreads = (int)SDL_GetNumberProperty(props, "avif.maxthreads", maxLCores / 2);
+    maxThreads = SDL_clamp(maxThreads, 1, maxLCores);
+    ctx->decoder->maxThreads = maxThreads;
+
+    bool allowProgressive = SDL_GetBooleanProperty(props, "avif.allowprogressive", true);
+    ctx->decoder->allowProgressive = allowProgressive ? AVIF_TRUE : AVIF_FALSE;
+
+    bool allowIncremental = SDL_GetBooleanProperty(props, "avif.allowincremental", false);
+    ctx->decoder->allowIncremental = allowIncremental ? AVIF_TRUE : AVIF_FALSE;
+
+    bool ignoreProps = SDL_GetBooleanProperty(props, IMG_PROP_METADATA_IGNORE_PROPS_BOOLEAN, false);
+    ctx->decoder->ignoreExif = ignoreProps ? AVIF_TRUE : AVIF_FALSE;
+    ctx->decoder->ignoreXMP = ignoreProps ? AVIF_TRUE : AVIF_FALSE;
+
+    decoder->ctx = ctx;
+    decoder->Reset = IMG_AnimationDecoderReset_Internal;
+    decoder->GetNextFrame = IMG_AnimationDecoderGetNextFrame_Internal;
+    decoder->Close = IMG_AnimationDecoderClose_Internal;
+
+    avifResult result = lib.avifDecoderParse(ctx->decoder);
+    if (result != AVIF_RESULT_OK) {
+        SDL_SetError("Couldn't parse AVIF animation: %s", lib.avifResultToString(result));
+        SDL_free(ctx);
+        return false;
+    }
+
+    if (ctx->decoder->imageCount < 1) {
+        SDL_SetError("No frames found in AVIF");
+        SDL_free(ctx);
+        return false;
+    }
+
+    ctx->width = ctx->decoder->image->width;
+    ctx->height = ctx->decoder->image->height;
+    ctx->total_frames = ctx->decoder->imageCount;
+
+    if (!ignoreProps) {
+        // Allow implicit properties to be set which are not globalized but specific to the decoder.
+        SDL_SetNumberProperty(decoder->props, "IMG_PROP_METADATA_FRAME_COUNT_NUMBER", ctx->total_frames);
+
+        // Set well-defined properties.
+        SDL_SetNumberProperty(decoder->props, IMG_PROP_METADATA_LOOP_COUNT_NUMBER, ctx->decoder->repetitionCount);
+
+        // Get other well-defined properties and set them in our props.
+        if (!ctx->decoder->ignoreXMP) {
+            uint8_t *data = ctx->decoder->image->xmp.data;
+            size_t len = ctx->decoder->image->xmp.size;
+            if (data && len > 0) {
+                char *desc = __xmlman_GetXMPDescription(data, len);
+                char *rights = __xmlman_GetXMPCopyright(data, len);
+                char *title = __xmlman_GetXMPTitle(data, len);
+                char *creator = __xmlman_GetXMPCreator(data, len);
+                char *createDate = __xmlman_GetXMPCreateDate(data, len);
+                if (desc) {
+                    SDL_SetStringProperty(decoder->props, IMG_PROP_METADATA_DESCRIPTION_STRING, desc);
+                    SDL_free(desc);
+                }
+                if (rights) {
+                    SDL_SetStringProperty(decoder->props, IMG_PROP_METADATA_COPYRIGHT_STRING, rights);
+                    SDL_free(rights);
+                }
+                if (title) {
+                    SDL_SetStringProperty(decoder->props, IMG_PROP_METADATA_TITLE_STRING, title);
+                    SDL_free(title);
+                }
+                if (creator) {
+                    SDL_SetStringProperty(decoder->props, IMG_PROP_METADATA_AUTHOR_STRING, creator);
+                    SDL_free(creator);
+                }
+                if (createDate) {
+                    SDL_SetStringProperty(decoder->props, IMG_PROP_METADATA_CREATION_TIME_STRING, createDate);
+                    SDL_free(createDate);
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+#else
+
+IMG_Animation* IMG_LoadAVIFAnimation_IO(SDL_IOStream* src)
+{
+    (void)src;
+    SDL_SetError("SDL_image built without AVIF animation loading support");
+    return NULL;
+}
+
+bool IMG_CreateAVIFAnimationDecoder(IMG_AnimationDecoder* decoder, SDL_PropertiesID props)
+{
+    (void)decoder;
+    (void)props;
+    return SDL_SetError("SDL_image built without AVIF animation loading support");
+}
+
+#endif /* LOAD_AVIF */
+
+#if SAVE_AVIF
+
+struct IMG_AnimationEncoderContext
+{
+    avifEncoder *encoder;
+    bool first_frame_added;
+    SDL_PropertiesID metadata;
+};
+
+static bool AnimationEncoder_AddFrame(struct IMG_AnimationEncoder *encoder, SDL_Surface *surface, Uint64 duration)
+{
+    avifImage *image = NULL;
+    avifRGBImage rgb;
+    avifResult rc;
+    SDL_Colorspace colorspace;
+    Uint16 maxCLL, maxFALL;
+    SDL_PropertiesID props;
+    uint64_t durationInTimescales;
+    bool lockedSurf = false;
+    SDL_Surface *temp = NULL;
+    bool temp_is_copy = false;
+    bool isLossless = encoder->quality == 100;
+    bool is10bit = SDL_ISPIXELFORMAT_10BIT(surface->format);
+    bool is16bit = (surface->format == SDL_PIXELFORMAT_RGB48 ||
+                   surface->format == SDL_PIXELFORMAT_BGR48 ||
+                   surface->format == SDL_PIXELFORMAT_RGBA64 ||
+                   surface->format == SDL_PIXELFORMAT_ARGB64 ||
+                   surface->format == SDL_PIXELFORMAT_BGRA64 ||
+                   surface->format == SDL_PIXELFORMAT_ABGR64);
+    bool hasAlpha = SDL_ISPIXELFORMAT_ALPHA(surface->format);
+
+    durationInTimescales = duration * encoder->timebase_numerator;
+    colorspace = SDL_GetSurfaceColorspace(surface);
+    props = SDL_GetSurfaceProperties(surface);
+    maxCLL = (Uint16)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_MAXCLL_NUMBER, 0);
+    maxFALL = (Uint16)SDL_GetNumberProperty(props, SDL_PROP_SURFACE_MAXFALL_NUMBER, 0);
+
+    uint32_t depth = is16bit ? 16 : (is10bit ? 10 : 8);
+    avifPixelFormat pixelFormat = (isLossless) ? AVIF_PIXEL_FORMAT_NONE : AVIF_PIXEL_FORMAT_YUV444;
+
+    image = lib.avifImageCreate(surface->w, surface->h, depth, pixelFormat);
+    if (!image) {
+        return SDL_SetError("Couldn't create AVIF image");
+    }
+
+    if (!encoder->ctx->first_frame_added && IMG_HasMetadata(encoder->ctx->metadata)) {
+        size_t outlen = 0;
+        uint8_t *xmp_data = __xmlman_ConstructXMPWithRDFDescription(SDL_GetStringProperty(encoder->ctx->metadata, IMG_PROP_METADATA_TITLE_STRING, NULL), SDL_GetStringProperty(encoder->ctx->metadata, IMG_PROP_METADATA_AUTHOR_STRING, NULL), SDL_GetStringProperty(encoder->ctx->metadata, IMG_PROP_METADATA_DESCRIPTION_STRING, NULL), SDL_GetStringProperty(encoder->ctx->metadata, IMG_PROP_METADATA_COPYRIGHT_STRING, NULL), SDL_GetStringProperty(encoder->ctx->metadata, IMG_PROP_METADATA_CREATION_TIME_STRING, NULL), &outlen);
+        if (!xmp_data || outlen < 1) {
+            lib.avifImageDestroy(image);
+            return SDL_SetError("Couldn't create XMP data for AVIF image");
+        }
+        avifResult ar = lib.avifImageSetMetadataXMP(image, xmp_data, outlen);
+        if (ar != AVIF_RESULT_OK) {
+            lib.avifImageDestroy(image);
+            SDL_free((void *)xmp_data);
+            return SDL_SetError("Couldn't set XMP metadata for AVIF image: %s", lib.avifResultToString(ar));
+        }
+        SDL_free((void *)xmp_data);
+    }
+
+    image->yuvRange = AVIF_RANGE_FULL;
+    image->colorPrimaries = (avifColorPrimaries)SDL_COLORSPACEPRIMARIES(colorspace);
+    image->transferCharacteristics = (avifTransferCharacteristics)SDL_COLORSPACETRANSFER(colorspace);
+
+    if (is10bit || is16bit || isLossless) {
+        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_IDENTITY;
+    } else {
+        image->matrixCoefficients = AVIF_MATRIX_COEFFICIENTS_BT709;
+    }
+
+    image->clli.maxCLL = maxCLL;
+    image->clli.maxPALL = maxFALL;
+
+    SDL_zero(rgb);
+    lib.avifRGBImageSetDefaults(&rgb, image);
+
+    if (SDL_MUSTLOCK(surface)) {
+        if (!SDL_LockSurface(surface)) {
+            lib.avifImageDestroy(image);
+            return SDL_SetError("Couldn't lock surface for reading");
+        }
+        lockedSurf = true;
+    }
+
+    if (is16bit) {
+        rgb.depth = 16;
+
+        switch (surface->format) {
+        case SDL_PIXELFORMAT_RGB48:
+            rgb.format = AVIF_RGB_FORMAT_RGB;
+            break;
+        case SDL_PIXELFORMAT_BGR48:
+            rgb.format = AVIF_RGB_FORMAT_BGR;
+            break;
+        case SDL_PIXELFORMAT_RGBA64:
+            rgb.format = AVIF_RGB_FORMAT_RGBA;
+            break;
+        case SDL_PIXELFORMAT_ARGB64:
+            rgb.format = AVIF_RGB_FORMAT_ARGB;
+            break;
+        case SDL_PIXELFORMAT_BGRA64:
+            rgb.format = AVIF_RGB_FORMAT_BGRA;
+            break;
+        case SDL_PIXELFORMAT_ABGR64:
+            rgb.format = AVIF_RGB_FORMAT_ABGR;
+            break;
+        default:
+            if (lockedSurf) {
+                SDL_UnlockSurface(surface);
+            }
+            lib.avifImageDestroy(image);
+            return SDL_SetError("Received a pixelformat that isn't 16 bit for 16 bit encoding");
+        }
+
+        rgb.ignoreAlpha = !hasAlpha;
+        rgb.pixels = (uint8_t *)surface->pixels;
+        rgb.rowBytes = (uint32_t)surface->pitch;
+
+        if (!isLossless) {
+            rc = lib.avifImageRGBToYUV(image, &rgb);
+
+            if (rc != AVIF_RESULT_OK) {
+                if (lockedSurf) {
+                    SDL_UnlockSurface(surface);
+                }
+                lib.avifImageDestroy(image);
+                return SDL_SetError("Couldn't convert 16-bit RGB to YUV: %s", lib.avifResultToString(rc));
+            }
+        }
+    } else if (is10bit) {
+        const Uint16 expand_alpha[] = {
+            0, 0x155, 0x2aa, 0x3ff
+        };
+
+        rgb.depth = 10;
+        rgb.format = (SDL_PIXELORDER(surface->format) == SDL_PACKEDORDER_XRGB ||
+                      SDL_PIXELORDER(surface->format) == SDL_PACKEDORDER_ARGB) ?
+                      AVIF_RGB_FORMAT_RGBA : AVIF_RGB_FORMAT_BGRA;
+        rgb.ignoreAlpha = !hasAlpha;
+        rgb.rowBytes = (uint32_t)image->width * 4 * sizeof(Uint16);
+        rgb.pixels = (uint8_t *)SDL_malloc(image->height * rgb.rowBytes);
+
+        if (!rgb.pixels) {
+            if (lockedSurf) {
+                SDL_UnlockSurface(surface);
+            }
+            lib.avifImageDestroy(image);
+            return SDL_SetError("Out of memory for RGB pixels");
+        }
+
+        // Convert 10-bit packed format to planar format for libavif
+        int width, height;
+        Uint16 *dst16 = (Uint16 *)rgb.pixels;
+        Uint32 *src = (Uint32 *)surface->pixels;
+        int srcskip = surface->pitch - (surface->w * sizeof(Uint32));
+
+        height = image->height;
+        while (height--) {
+            width = image->width;
+            while (width--) {
+                Uint32 pixelvalue = *src++;
+
+                // Extract 10-bit components
+                *dst16++ = (pixelvalue >> 20) & 0x3FF;  // R
+                *dst16++ = (pixelvalue >> 10) & 0x3FF;  // G
+                *dst16++ = (pixelvalue >> 0) & 0x3FF;   // B
+
+                // Handle alpha - use full opacity for non-alpha formats
+                if (hasAlpha) {
+                    *dst16++ = expand_alpha[(pixelvalue >> 30) & 0x3];  // A
+                } else {
+                    *dst16++ = 0x3FF;  // Full opacity
+                }
+            }
+            src = (Uint32 *)(((Uint8 *)src) + srcskip);
+        }
+
+        if (!isLossless) {
+            rc = lib.avifImageRGBToYUV(image, &rgb);
+
+            SDL_free(rgb.pixels);
+            rgb.pixels = NULL;
+
+            if (rc != AVIF_RESULT_OK) {
+                if (lockedSurf) {
+                    SDL_UnlockSurface(surface);
+                }
+                lib.avifImageDestroy(image);
+                return SDL_SetError("Couldn't convert to YUV: %s", lib.avifResultToString(rc));
+            }
+        }
+    } else {
+        avifRGBFormat format;
+        bool needsConversion = true;
+
+        switch (surface->format) {
+        case SDL_PIXELFORMAT_RGBA32:
+            format = AVIF_RGB_FORMAT_RGBA;
+            needsConversion = false;
+            break;
+        case SDL_PIXELFORMAT_ARGB32:
+            format = AVIF_RGB_FORMAT_ARGB;
+            needsConversion = false;
+            break;
+        case SDL_PIXELFORMAT_BGRA32:
+            format = AVIF_RGB_FORMAT_BGRA;
+            needsConversion = false;
+            break;
+        case SDL_PIXELFORMAT_ABGR32:
+            format = AVIF_RGB_FORMAT_ABGR;
+            needsConversion = false;
+            break;
+        case SDL_PIXELFORMAT_RGB24:
+            format = AVIF_RGB_FORMAT_RGB;
+            needsConversion = true;
+            break;
+        case SDL_PIXELFORMAT_BGR24:
+            format = AVIF_RGB_FORMAT_BGR;
+            needsConversion = true;
+            break;
+        case SDL_PIXELFORMAT_RGBX32:
+        case SDL_PIXELFORMAT_XRGB32:
+        case SDL_PIXELFORMAT_BGRX32:
+        case SDL_PIXELFORMAT_XBGR32:
+            needsConversion = true;
+            format = AVIF_RGB_FORMAT_RGBA;
+            break;
+        default:
+#if SDL_BYTEORDER == SDL_LIL_ENDIAN
+            format = AVIF_RGB_FORMAT_ABGR;
+#else
+            format = AVIF_RGB_FORMAT_RGBA;
+#endif
+            needsConversion = true;
+            break;
+        }
+
+        if (needsConversion) {
+            Uint32 target_format = hasAlpha ? SDL_PIXELFORMAT_RGBA32 : SDL_PIXELFORMAT_RGBX32;
+            temp = SDL_ConvertSurface(surface, target_format);
+            if (!temp) {
+                if (lockedSurf) {
+                    SDL_UnlockSurface(surface);
+                }
+                lib.avifImageDestroy(image);
+                return SDL_SetError("Couldn't convert surface to compatible format");
+            }
+            temp_is_copy = true;
+
+            rgb.format = format;
+            rgb.pixels = (uint8_t *)temp->pixels;
+            rgb.rowBytes = (uint32_t)temp->pitch;
+        } else {
+            rgb.format = format;
+            rgb.pixels = (uint8_t *)surface->pixels;
+            rgb.rowBytes = (uint32_t)surface->pitch;
+        }
+
+        rgb.depth = 8;
+        rgb.ignoreAlpha = !hasAlpha;
+        rgb.alphaPremultiplied = AVIF_FALSE;
+        rgb.chromaUpsampling = AVIF_CHROMA_UPSAMPLING_AUTOMATIC;
+
+        if (!isLossless) {
+            rc = lib.avifImageRGBToYUV(image, &rgb);
+
+            if (rc != AVIF_RESULT_OK) {
+                if (temp_is_copy && temp) {
+                    SDL_DestroySurface(temp);
+                }
+                if (lockedSurf) {
+                    SDL_UnlockSurface(surface);
+                }
+                lib.avifImageDestroy(image);
+                return SDL_SetError("Couldn't convert to YUV: %s", lib.avifResultToString(rc));
+            }
+        }
+    }
+
+    avifAddImageFlags addImageFlags = AVIF_ADD_IMAGE_FLAG_NONE;
+    if (isLossless || !encoder->ctx->first_frame_added) {
+        addImageFlags = AVIF_ADD_IMAGE_FLAG_FORCE_KEYFRAME;
+    }
+
+    if (isLossless) {
+        if (is10bit && rgb.pixels) {
+            // For 10-bit lossless that required conversion
+            rc = lib.avifEncoderAddImage(encoder->ctx->encoder, image, durationInTimescales, addImageFlags);
+            SDL_free(rgb.pixels);
+            rgb.pixels = NULL;
+        } else {
+            // For direct encoding (8-bit, 16-bit, or pre-converted 10-bit)
+            rc = lib.avifEncoderAddImage(encoder->ctx->encoder, image, durationInTimescales, addImageFlags);
+        }
+    } else {
+        // For lossy encoding (YUV conversion already done)
+        rc = lib.avifEncoderAddImage(encoder->ctx->encoder, image, durationInTimescales, addImageFlags);
+    }
+
+    if (temp_is_copy && temp) {
+        SDL_DestroySurface(temp);
+    }
+
+    if (lockedSurf) {
+        SDL_UnlockSurface(surface);
+    }
+
+    lib.avifImageDestroy(image);
+
+    if (rc != AVIF_RESULT_OK) {
+        return SDL_SetError("Failed to add image to avif encoder: %s", lib.avifResultToString(rc));
+    }
+
+    if (!encoder->ctx->first_frame_added) {
+        encoder->ctx->first_frame_added = true;
+    }
+
+    return true;
+}
+
+static bool AnimationEncoder_End(struct IMG_AnimationEncoder* encoder)
+{
+    avifRWData avifOutput = AVIF_DATA_EMPTY;
+    avifResult rc;
+    bool result = false;
+
+    if (!encoder->ctx || !encoder->ctx->encoder) {
+        return SDL_SetError("Invalid context or encoder");
+    }
+
+    rc = lib.avifEncoderFinish(encoder->ctx->encoder, &avifOutput);
+    if (rc != AVIF_RESULT_OK) {
+        SDL_SetError("Failed to finish encoder: %s", lib.avifResultToString(rc));
+        goto done;
+    }
+
+    if (SDL_WriteIO(encoder->dst, avifOutput.data, avifOutput.size) == avifOutput.size) {
+        result = true;
+    } else {
+        SDL_SetError("Failed to write AVIF data to IOStream");
+    }
+
+done:
+    if (encoder->ctx->metadata) {
+        SDL_DestroyProperties(encoder->ctx->metadata);
+        encoder->ctx->metadata = 0;
+    }
+    if (encoder->ctx->encoder) {
+        lib.avifEncoderDestroy(encoder->ctx->encoder);
+        encoder->ctx->encoder = NULL;
+    }
+    if (encoder->ctx) {
+        SDL_free(encoder->ctx);
+        encoder->ctx = NULL;
+    }
+    lib.avifRWDataFree(&avifOutput);
+
+    return result;
+}
+
+bool IMG_CreateAVIFAnimationEncoder(IMG_AnimationEncoder *encoder, SDL_PropertiesID props)
+{
+    if (!IMG_InitAVIF()) {
+        return false;
+    }
+
+    IMG_AnimationEncoderContext *ctx = (IMG_AnimationEncoderContext *)SDL_calloc(1, sizeof(*ctx));
+    if (!ctx) {
+        return SDL_SetError("Out of memory for AVIF context");
+    }
+
+    ctx->encoder = lib.avifEncoderCreate();
+    if (!ctx->encoder) {
+        SDL_free(ctx);
+        return SDL_SetError("Couldn't create AVIF encoder");
+    }
+
+    if (encoder->quality < 0) {
+        encoder->quality = 75;
+    } else if (encoder->quality > 100) {
+        encoder->quality = 100;
+    }
+
+    int availableLCores = SDL_GetNumLogicalCPUCores();
+    int threads = (int)SDL_GetNumberProperty(props, "maxthreads", availableLCores / 2);
+    threads = SDL_clamp(threads, 1, availableLCores);
+
+    int keyFrameInterval = (int)SDL_GetNumberProperty(props, "keyframeinterval", 0);
+
+    ctx->encoder->maxThreads = threads;
+    ctx->encoder->quality = encoder->quality;
+
+    ctx->encoder->qualityAlpha = AVIF_QUALITY_DEFAULT;
+    ctx->encoder->speed = AVIF_SPEED_FASTEST;
+
+    if (ctx->encoder->quality >= 100) {
+        ctx->encoder->keyframeInterval = SDL_min(1, keyFrameInterval);
+        ctx->encoder->minQuantizer = 0;
+        ctx->encoder->maxQuantizer = 0;
+
+        ctx->encoder->minQuantizerAlpha = 0;
+        ctx->encoder->maxQuantizerAlpha = 0;
+        ctx->encoder->autoTiling = AVIF_FALSE;
+    } else {
+        ctx->encoder->keyframeInterval = keyFrameInterval;
+        ctx->encoder->minQuantizer = 8;
+        ctx->encoder->maxQuantizer = 63;
+
+        ctx->encoder->minQuantizerAlpha = 0;
+        ctx->encoder->maxQuantizerAlpha = 63;
+        ctx->encoder->autoTiling = AVIF_TRUE;
+    }
+
+    ctx->encoder->tileRowsLog2 = 0;
+    ctx->encoder->tileColsLog2 = 0;
+
+    ctx->encoder->timescale = encoder->timebase_denominator;
+
+    bool ignoreProps = SDL_GetBooleanProperty(props, IMG_PROP_METADATA_IGNORE_PROPS_BOOLEAN, false);
+    if (!ignoreProps) {
+        ctx->encoder->repetitionCount = (int)SDL_GetNumberProperty(props, IMG_PROP_METADATA_LOOP_COUNT_NUMBER, -1);
+        if (ctx->encoder->repetitionCount < 1 && ctx->encoder->repetitionCount != -1) {
+            ctx->encoder->repetitionCount = -1;
+        }
+
+        ctx->metadata = SDL_CreateProperties();
+        if (!ctx->metadata) {
+            lib.avifEncoderDestroy(ctx->encoder);
+            SDL_free(ctx);
+            return SDL_SetError("Couldn't create properties ID for AVIF encoder metadata");
+        }
+
+        if (!SDL_CopyProperties(props, ctx->metadata)) {
+            lib.avifEncoderDestroy(ctx->encoder);
+            SDL_DestroyProperties(ctx->metadata);
+            SDL_free((void *)ctx);
+            return SDL_SetError("Couldn't copy properties to AVIF encoder metadata");
+        }
+    }
+
+    encoder->ctx = ctx;
+    encoder->AddFrame = AnimationEncoder_AddFrame;
+    encoder->Close = AnimationEncoder_End;
+
+    return true;
+}
+
+#else
+
+bool IMG_CreateAVIFAnimationEncoder(IMG_AnimationEncoder *encoder, SDL_PropertiesID props)
+{
+    (void)encoder;
+    (void)props;
+    return SDL_SetError("SDL_image built without AVIF animation encoding support");
+}
+
+#endif /* SAVE_AVIF */

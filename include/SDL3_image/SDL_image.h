@@ -1849,6 +1849,63 @@ extern SDL_DECLSPEC SDL_Surface * SDLCALL IMG_ReadXPMFromArray(char **xpm);
 extern SDL_DECLSPEC SDL_Surface * SDLCALL IMG_ReadXPMFromArrayToRGB888(char **xpm);
 
 /**
+ * Save an SDL_Surface into an image file.
+ *
+ * If the file already exists, it will be overwritten.
+ *
+ * For formats that accept a quality, a default quality of 90 will be used.
+ *
+ * \param surface the SDL surface to save.
+ * \param file path on the filesystem to write new file to.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_SaveTyped_IO
+ * \sa IMG_SaveAVIF
+ * \sa IMG_SaveBMP
+ * \sa IMG_SaveGIF
+ * \sa IMG_SaveJPG
+ * \sa IMG_SavePNG
+ * \sa IMG_SaveTGA
+ * \sa IMG_SaveWEBP
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_Save(SDL_Surface *surface, const char *file);
+
+/**
+ * Save an SDL_Surface into formatted image data, via an SDL_IOStream.
+ *
+ * If you just want to save to a filename, you can use IMG_Save() instead.
+ *
+ * If `closeio` is true, `dst` will be closed before returning, whether this
+ * function succeeds or not.
+ *
+ * For formats that accept a quality, a default quality of 90 will be used.
+ *
+ * \param surface the SDL surface to save.
+ * \param dst the SDL_IOStream to save the image data to.
+ * \param closeio true to close/free the SDL_IOStream before returning, false
+ *                to leave it open.
+ * \param type a filename extension that represent this data ("BMP", "GIF",
+ *             "PNG", etc).
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_Save
+ * \sa IMG_SaveAVIF_IO
+ * \sa IMG_SaveBMP_IO
+ * \sa IMG_SaveGIF_IO
+ * \sa IMG_SaveJPG_IO
+ * \sa IMG_SavePNG_IO
+ * \sa IMG_SaveTGA_IO
+ * \sa IMG_SaveWEBP_IO
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveTyped_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio, const char *type);
+
+/**
  * Save an SDL_Surface into a AVIF image file.
  *
  * If the file already exists, it will be overwritten.
@@ -1890,7 +1947,7 @@ extern SDL_DECLSPEC bool SDLCALL IMG_SaveAVIF(SDL_Surface *surface, const char *
 extern SDL_DECLSPEC bool SDLCALL IMG_SaveAVIF_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio, int quality);
 
 /**
- * Save an SDL_Surface into a PNG image file.
+ * Save an SDL_Surface into a BMP image file.
  *
  * If the file already exists, it will be overwritten.
  *
@@ -1899,16 +1956,22 @@ extern SDL_DECLSPEC bool SDLCALL IMG_SaveAVIF_IO(SDL_Surface *surface, SDL_IOStr
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL_image 3.0.0.
+ * \since This function is available since SDL_image 3.4.0.
  *
- * \sa IMG_SavePNG_IO
+ * \sa IMG_SaveBMP_IO
+ * \sa IMG_SaveAVIF
+ * \sa IMG_SaveGIF
+ * \sa IMG_SaveJPG
+ * \sa IMG_SavePNG
+ * \sa IMG_SaveTGA
+ * \sa IMG_SaveWEBP
  */
-extern SDL_DECLSPEC bool SDLCALL IMG_SavePNG(SDL_Surface *surface, const char *file);
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveBMP(SDL_Surface *surface, const char *file);
 
 /**
- * Save an SDL_Surface into PNG image data, via an SDL_IOStream.
+ * Save an SDL_Surface into BMP image data, via an SDL_IOStream.
  *
- * If you just want to save to a filename, you can use IMG_SavePNG() instead.
+ * If you just want to save to a filename, you can use IMG_SaveBMP() instead.
  *
  * If `closeio` is true, `dst` will be closed before returning, whether this
  * function succeeds or not.
@@ -1920,11 +1983,54 @@ extern SDL_DECLSPEC bool SDLCALL IMG_SavePNG(SDL_Surface *surface, const char *f
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL_image 3.0.0.
+ * \since This function is available since SDL_image 3.4.0.
  *
- * \sa IMG_SavePNG
+ * \sa IMG_SaveBMP
+ * \sa IMG_SaveAVIF_IO
+ * \sa IMG_SaveGIF_IO
+ * \sa IMG_SaveJPG_IO
+ * \sa IMG_SavePNG_IO
+ * \sa IMG_SaveTGA_IO
+ * \sa IMG_SaveWEBP_IO
  */
-extern SDL_DECLSPEC bool SDLCALL IMG_SavePNG_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio);
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveBMP_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio);
+
+/**
+ * Save an SDL_Surface into a GIF image file.
+ *
+ * If the file already exists, it will be overwritten.
+ *
+ * \param surface the SDL surface to save.
+ * \param file path on the filesystem to write new file to.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_SaveGIF_IO
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveGIF(SDL_Surface *surface, const char *file);
+
+/**
+ * Save an SDL_Surface into GIF image data, via an SDL_IOStream.
+ *
+ * If you just want to save to a filename, you can use IMG_SaveGIF() instead.
+ *
+ * If `closeio` is true, `dst` will be closed before returning, whether this
+ * function succeeds or not.
+ *
+ * \param surface the SDL surface to save.
+ * \param dst the SDL_IOStream to save the image data to.
+ * \param closeio true to close/free the SDL_IOStream before returning, false
+ *                to leave it open.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_SaveGIF
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveGIF_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio);
 
 /**
  * Save an SDL_Surface into a JPEG image file.
@@ -1968,6 +2074,100 @@ extern SDL_DECLSPEC bool SDLCALL IMG_SaveJPG(SDL_Surface *surface, const char *f
 extern SDL_DECLSPEC bool SDLCALL IMG_SaveJPG_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio, int quality);
 
 /**
+ * Save an SDL_Surface into a PNG image file.
+ *
+ * If the file already exists, it will be overwritten.
+ *
+ * \param surface the SDL surface to save.
+ * \param file path on the filesystem to write new file to.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.0.0.
+ *
+ * \sa IMG_SavePNG_IO
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SavePNG(SDL_Surface *surface, const char *file);
+
+/**
+ * Save an SDL_Surface into PNG image data, via an SDL_IOStream.
+ *
+ * If you just want to save to a filename, you can use IMG_SavePNG() instead.
+ *
+ * If `closeio` is true, `dst` will be closed before returning, whether this
+ * function succeeds or not.
+ *
+ * \param surface the SDL surface to save.
+ * \param dst the SDL_IOStream to save the image data to.
+ * \param closeio true to close/free the SDL_IOStream before returning, false
+ *                to leave it open.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.0.0.
+ *
+ * \sa IMG_SavePNG
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SavePNG_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio);
+
+/**
+ * Save an SDL_Surface into a TGA image file.
+ *
+ * If the file already exists, it will be overwritten.
+ *
+ * \param surface the SDL surface to save.
+ * \param file path on the filesystem to write new file to.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_SaveTGA_IO
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveTGA(SDL_Surface *surface, const char *file);
+
+/**
+ * Save an SDL_Surface into TGA image data, via an SDL_IOStream.
+ *
+ * If you just want to save to a filename, you can use IMG_SaveTGA() instead.
+ *
+ * If `closeio` is true, `dst` will be closed before returning, whether this
+ * function succeeds or not.
+ *
+ * \param surface the SDL surface to save.
+ * \param dst the SDL_IOStream to save the image data to.
+ * \param closeio true to close/free the SDL_IOStream before returning, false
+ *                to leave it open.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_SaveTGA
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveTGA_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio);
+
+/**
+ * Save an SDL_Surface into a WEBP image file.
+ *
+ * If the file already exists, it will be overwritten.
+ *
+ * \param surface the SDL surface to save.
+ * \param file path on the filesystem to write the new file to.
+ * \param quality between 0 and 100. For lossy, 0 gives the smallest size and
+ *                100 the largest. For lossless, this parameter is the amount
+ *                of effort put into the compression: 0 is the fastest but
+ *                gives larger files compared to the slowest, but best, 100.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_SaveWEBP_IO
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_SaveWEBP(SDL_Surface *surface, const char *file, float quality);
+
+/**
  * Save an SDL_Surface into WEBP image data, via an SDL_IOStream.
  *
  * If you just want to save to a filename, you can use IMG_SaveWEBP() instead.
@@ -1986,68 +2186,14 @@ extern SDL_DECLSPEC bool SDLCALL IMG_SaveJPG_IO(SDL_Surface *surface, SDL_IOStre
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
- * \since This function is available since SDL_image 3.2.18.
+ * \since This function is available since SDL_image 3.4.0.
  *
  * \sa IMG_SaveWEBP
  */
 extern SDL_DECLSPEC bool SDLCALL IMG_SaveWEBP_IO(SDL_Surface *surface, SDL_IOStream *dst, bool closeio, float quality);
 
 /**
- * Save an SDL_Surface into a WEBP image file.
- *
- * If the file already exists, it will be overwritten.
- *
- * \param surface the SDL surface to save.
- * \param file path on the filesystem to write the new file to.
- * \param quality between 0 and 100. For lossy, 0 gives the smallest size and
- *                100 the largest. For lossless, this parameter is the amount
- *                of effort put into the compression: 0 is the fastest but
- *                gives larger files compared to the slowest, but best, 100.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \since This function is available since SDL_image 3.2.18.
- *
- * \sa IMG_SaveWEBP_IO
- */
-extern SDL_DECLSPEC bool SDLCALL IMG_SaveWEBP(SDL_Surface *surface, const char *file, float quality);
-
-/**
- * Save an SDL_Surface into TGA image data, via an SDL_IOStream.
- *
- * If you just want to save to a filename, you can use IMG_SaveTGA() instead.
- *
- * \param surface the SDL surface to save.
- * \param dst the SDL_IOStream to save the image data to.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \since This function is available since SDL_image 3.2.18.
- *
- * \sa IMG_SaveTGA
- */
-extern SDL_DECLSPEC bool SDLCALL IMG_SaveTGA_IO(SDL_Surface *surface, SDL_IOStream *dst);
-
-/**
- * Save an SDL_Surface into a TGA image file.
- *
- * If the file already exists, it will be overwritten.
- *
- * \param surface the SDL surface to save.
- * \param file path on the filesystem to write new file to.
- * \returns true on success or false on failure; call SDL_GetError() for more
- *          information.
- *
- * \since This function is available since SDL_image 3.2.18.
- *
- * \sa IMG_SaveTGA_IO
- */
-extern SDL_DECLSPEC bool SDLCALL IMG_SaveTGA(SDL_Surface *surface, const char *file);
-
-/**
  * Animated image support
- *
- * Currently only animated GIFs and WEBP images are supported.
  */
 typedef struct IMG_Animation
 {
@@ -2069,6 +2215,12 @@ typedef struct IMG_Animation
  *
  * \since This function is available since SDL_image 3.0.0.
  *
+ * \sa IMG_LoadAnimation_IO
+ * \sa IMG_LoadAnimationTyped_IO
+ * \sa IMG_LoadAPNGAnimation_IO
+ * \sa IMG_LoadAVIFAnimation_IO
+ * \sa IMG_LoadGIFAnimation_IO
+ * \sa IMG_LoadWEBPAnimation_IO
  * \sa IMG_FreeAnimation
  */
 extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadAnimation(const char *file);
@@ -2090,6 +2242,12 @@ extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadAnimation(const char *file);
  *
  * \since This function is available since SDL_image 3.0.0.
  *
+ * \sa IMG_LoadAnimation
+ * \sa IMG_LoadAnimationTyped_IO
+ * \sa IMG_LoadAPNGAnimation_IO
+ * \sa IMG_LoadAVIFAnimation_IO
+ * \sa IMG_LoadGIFAnimation_IO
+ * \sa IMG_LoadWEBPAnimation_IO
  * \sa IMG_FreeAnimation
  */
 extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadAnimation_IO(SDL_IOStream *src, bool closeio);
@@ -2120,6 +2278,10 @@ extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadAnimation_IO(SDL_IOStream *s
  *
  * \sa IMG_LoadAnimation
  * \sa IMG_LoadAnimation_IO
+ * \sa IMG_LoadAPNGAnimation_IO
+ * \sa IMG_LoadAVIFAnimation_IO
+ * \sa IMG_LoadGIFAnimation_IO
+ * \sa IMG_LoadWEBPAnimation_IO
  * \sa IMG_FreeAnimation
  */
 extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadAnimationTyped_IO(SDL_IOStream *src, bool closeio, const char *type);
@@ -2136,8 +2298,64 @@ extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadAnimationTyped_IO(SDL_IOStre
  * \sa IMG_LoadAnimation
  * \sa IMG_LoadAnimation_IO
  * \sa IMG_LoadAnimationTyped_IO
+ * \sa IMG_LoadAPNGAnimation_IO
+ * \sa IMG_LoadAVIFAnimation_IO
+ * \sa IMG_LoadGIFAnimation_IO
+ * \sa IMG_LoadWEBPAnimation_IO
  */
 extern SDL_DECLSPEC void SDLCALL IMG_FreeAnimation(IMG_Animation *anim);
+
+/**
+ * Load an APNG animation directly from an SDL_IOStream.
+ *
+ * If you know you definitely have an APNG image, you can call this function,
+ * which will skip SDL_image's file format detection routines. Generally, it's
+ * better to use the abstract interfaces; also, there is only an SDL_IOStream
+ * interface available here.
+ *
+ * When done with the returned animation, the app should dispose of it with a
+ * call to IMG_FreeAnimation().
+ *
+ * \param src an SDL_IOStream from which data will be read.
+ * \returns a new IMG_Animation, or NULL on error.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_LoadAnimation
+ * \sa IMG_LoadAnimation_IO
+ * \sa IMG_LoadAnimationTyped_IO
+ * \sa IMG_LoadAVIFAnimation_IO
+ * \sa IMG_LoadGIFAnimation_IO
+ * \sa IMG_LoadWEBPAnimation_IO
+ * \sa IMG_FreeAnimation
+ */
+extern SDL_DECLSPEC IMG_Animation *SDLCALL IMG_LoadAPNGAnimation_IO(SDL_IOStream *src);
+
+/**
+ * Load an AVIF animation directly from an SDL_IOStream.
+ *
+ * If you know you definitely have an AVIF animation, you can call this
+ * function, which will skip SDL_image's file format detection routines.
+ * Generally it's better to use the abstract interfaces; also, there is only
+ * an SDL_IOStream interface available here.
+ *
+ * When done with the returned animation, the app should dispose of it with a
+ * call to IMG_FreeAnimation().
+ *
+ * \param src an SDL_IOStream that data will be read from.
+ * \returns a new IMG_Animation, or NULL on error.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_LoadAnimation
+ * \sa IMG_LoadAnimation_IO
+ * \sa IMG_LoadAnimationTyped_IO
+ * \sa IMG_LoadAPNGAnimation_IO
+ * \sa IMG_LoadGIFAnimation_IO
+ * \sa IMG_LoadWEBPAnimation_IO
+ * \sa IMG_FreeAnimation
+ */
+extern SDL_DECLSPEC IMG_Animation *SDLCALL IMG_LoadAVIFAnimation_IO(SDL_IOStream *src);
 
 /**
  * Load a GIF animation directly.
@@ -2155,6 +2373,9 @@ extern SDL_DECLSPEC void SDLCALL IMG_FreeAnimation(IMG_Animation *anim);
  * \sa IMG_LoadAnimation
  * \sa IMG_LoadAnimation_IO
  * \sa IMG_LoadAnimationTyped_IO
+ * \sa IMG_LoadAPNGAnimation_IO
+ * \sa IMG_LoadAVIFAnimation_IO
+ * \sa IMG_LoadWEBPAnimation_IO
  * \sa IMG_FreeAnimation
  */
 extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadGIFAnimation_IO(SDL_IOStream *src);
@@ -2175,144 +2396,364 @@ extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadGIFAnimation_IO(SDL_IOStream
  * \sa IMG_LoadAnimation
  * \sa IMG_LoadAnimation_IO
  * \sa IMG_LoadAnimationTyped_IO
+ * \sa IMG_LoadAPNGAnimation_IO
+ * \sa IMG_LoadAVIFAnimation_IO
+ * \sa IMG_LoadGIFAnimation_IO
  * \sa IMG_FreeAnimation
  */
 extern SDL_DECLSPEC IMG_Animation * SDLCALL IMG_LoadWEBPAnimation_IO(SDL_IOStream *src);
 
 /**
- * An object representing a stream of images being saved.
+ * An object representing the encoder context.
  */
-typedef struct IMG_AnimationStream IMG_AnimationStream;
+typedef struct IMG_AnimationEncoder IMG_AnimationEncoder;
 
 /**
- * Create an animation stream and save it to a file.
+ * Create an encoder to save a series of images to a file.
  *
  * The file type is determined from the file extension, e.g. "file.webp" will
  * be encoded using WEBP.
  *
  * \param file the file where the animation will be saved.
- * \returns a new IMG_AnimationStream, or NULL on failure; call SDL_GetError()
- *          for more information.
+ * \returns a new IMG_AnimationEncoder, or NULL on failure; call
+ *          SDL_GetError() for more information.
  *
  * \since This function is available since SDL_image 3.4.0.
  *
- * \sa IMG_CreateAnimationStream_IO
- * \sa IMG_CreateAnimationStreamWithProperties
- * \sa IMG_AddAnimationFrame
- * \sa IMG_CloseAnimationStream
+ * \sa IMG_CreateAnimationEncoder_IO
+ * \sa IMG_CreateAnimationEncoderWithProperties
+ * \sa IMG_AddAnimationEncoderFrame
+ * \sa IMG_CloseAnimationEncoder
  */
-extern SDL_DECLSPEC IMG_AnimationStream * SDLCALL IMG_CreateAnimationStream(const char *file);
+extern SDL_DECLSPEC IMG_AnimationEncoder * SDLCALL IMG_CreateAnimationEncoder(const char *file);
 
 /**
- * Create an animation stream and save it to an IOStream.
+ * Create an encoder to save a series of images to an IOStream.
  *
  * If `closeio` is true, `dst` will be closed before returning if this
- * function fails, or when the animation stream is closed if this function
+ * function fails, or when the animation encoder is closed if this function
  * succeeds.
  *
  * \param dst an SDL_IOStream that will be used to save the stream.
  * \param closeio true to close the SDL_IOStream when done, false to leave it
  *                open.
  * \param type a filename extension that represent this data ("WEBP", etc).
- * \returns a new IMG_AnimationStream, or NULL on failure; call SDL_GetError()
- *          for more information.
+ * \returns a new IMG_AnimationEncoder, or NULL on failure; call
+ *          SDL_GetError() for more information.
  *
  * \since This function is available since SDL_image 3.4.0.
  *
- * \sa IMG_CreateAnimationStream
- * \sa IMG_CreateAnimationStreamWithProperties
- * \sa IMG_AddAnimationFrame
- * \sa IMG_CloseAnimationStream
+ * \sa IMG_CreateAnimationEncoder
+ * \sa IMG_CreateAnimationEncoderWithProperties
+ * \sa IMG_AddAnimationEncoderFrame
+ * \sa IMG_CloseAnimationEncoder
  */
-extern SDL_DECLSPEC IMG_AnimationStream * SDLCALL IMG_CreateAnimationStream_IO(SDL_IOStream *dst, bool closeio, const char *type);
+extern SDL_DECLSPEC IMG_AnimationEncoder * SDLCALL IMG_CreateAnimationEncoder_IO(SDL_IOStream *dst, bool closeio, const char *type);
 
 /**
- * Create an animation stream with the specified properties.
+ * Create an animation encoder with the specified properties.
  *
  * These are the supported properties:
  *
- * - `IMG_PROP_ANIMATION_STREAM_CREATE_FILENAME_STRING`: the file to save, if
+ * - `IMG_PROP_ANIMATION_ENCODER_CREATE_FILENAME_STRING`: the file to save, if
  *   an SDL_IOStream isn't being used. This is required if
- *   `IMG_PROP_ANIMATION_STREAM_CREATE_IOSTREAM_POINTER` isn't set.
- * - `IMG_PROP_ANIMATION_STREAM_CREATE_IOSTREAM_POINTER`: an SDL_IOStream that
- *   will be used to save the stream. This should not be closed until the
- *   animation stream is closed. This is required if
- *   `IMG_PROP_ANIMATION_STREAM_CREATE_FILENAME_STRING` isn't set.
- * - `IMG_PROP_ANIMATION_STREAM_CREATE_IOSTREAM_AUTOCLOSE_BOOLEAN`: true if
- *   closing the animation stream should also close the associated
+ *   `IMG_PROP_ANIMATION_ENCODER_CREATE_IOSTREAM_POINTER` isn't set.
+ * - `IMG_PROP_ANIMATION_ENCODER_CREATE_IOSTREAM_POINTER`: an SDL_IOStream
+ *   that will be used to save the stream. This should not be closed until the
+ *   animation encoder is closed. This is required if
+ *   `IMG_PROP_ANIMATION_ENCODER_CREATE_FILENAME_STRING` isn't set.
+ * - `IMG_PROP_ANIMATION_ENCODER_CREATE_IOSTREAM_AUTOCLOSE_BOOLEAN`: true if
+ *   closing the animation encoder should also close the associated
  *   SDL_IOStream.
- * - `IMG_PROP_ANIMATION_STREAM_CREATE_TYPE_STRING`: the output file type,
+ * - `IMG_PROP_ANIMATION_ENCODER_CREATE_TYPE_STRING`: the output file type,
  *   e.g. "webp", defaults to the file extension if
- *   `IMG_PROP_ANIMATION_STREAM_CREATE_FILENAME_STRING` is set.
- * - `IMG_PROP_ANIMATION_STREAM_CREATE_QUALITY_NUMBER`: the compression
+ *   `IMG_PROP_ANIMATION_ENCODER_CREATE_FILENAME_STRING` is set.
+ * - `IMG_PROP_ANIMATION_ENCODER_CREATE_QUALITY_NUMBER`: the compression
  *   quality, in the range of 0 to 100. The higher the number, the higher the
  *   quality and file size. This defaults to a balanced value for compression
  *   and quality.
- * - `IMG_PROP_ANIMATION_STREAM_CREATE_TIMEBASE_NUMERATOR_NUMBER`: the
+ * - `IMG_PROP_ANIMATION_ENCODER_CREATE_TIMEBASE_NUMERATOR_NUMBER`: the
  *   numerator of the fraction used to multiply the pts to convert it to
  *   seconds. This defaults to 1.
- * - `IMG_PROP_ANIMATION_STREAM_CREATE_TIMEBASE_DENOMINATOR_NUMBER`: the
+ * - `IMG_PROP_ANIMATION_ENCODER_CREATE_TIMEBASE_DENOMINATOR_NUMBER`: the
  *   denominator of the fraction used to multiply the pts to convert it to
  *   seconds. This defaults to 1000.
  *
- * \param props the properties of the animation stream.
- * \returns a new IMG_AnimationStream, or NULL on failure; call SDL_GetError()
+ * \param props the properties of the animation encoder.
+ * \returns a new IMG_AnimationEncoder, or NULL on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_CreateAnimationEncoder
+ * \sa IMG_CreateAnimationEncoder_IO
+ * \sa IMG_AddAnimationEncoderFrame
+ * \sa IMG_CloseAnimationEncoder
+ */
+extern SDL_DECLSPEC IMG_AnimationEncoder * SDLCALL IMG_CreateAnimationEncoderWithProperties(SDL_PropertiesID props);
+
+#define IMG_PROP_ANIMATION_ENCODER_CREATE_FILENAME_STRING                "SDL_image.animation_encoder.create.filename"
+#define IMG_PROP_ANIMATION_ENCODER_CREATE_IOSTREAM_POINTER               "SDL_image.animation_encoder.create.iostream"
+#define IMG_PROP_ANIMATION_ENCODER_CREATE_IOSTREAM_AUTOCLOSE_BOOLEAN     "SDL_image.animation_encoder.create.iostream.autoclose"
+#define IMG_PROP_ANIMATION_ENCODER_CREATE_TYPE_STRING                    "SDL_image.animation_encoder.create.type"
+#define IMG_PROP_ANIMATION_ENCODER_CREATE_QUALITY_NUMBER                 "SDL_image.animation_encoder.create.quality"
+#define IMG_PROP_ANIMATION_ENCODER_CREATE_TIMEBASE_NUMERATOR_NUMBER      "SDL_image.animation_encoder.create.timebase.numerator"
+#define IMG_PROP_ANIMATION_ENCODER_CREATE_TIMEBASE_DENOMINATOR_NUMBER    "SDL_image.animation_encoder.create.timebase.denominator"
+
+/**
+ * Add a frame to an animation encoder.
+ *
+ * \param encoder the receiving images.
+ * \param surface the surface to add as the next frame in the animation.
+ * \param duration the duration of the frame, usually in milliseconds but can
+ *                 be other units if the
+ *                 `IMG_PROP_ANIMATION_ENCODER_CREATE_TIMEBASE_DENOMINATOR_NUMBER`
+ *                 property is set when creating the encoder.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_CreateAnimationEncoder
+ * \sa IMG_CreateAnimationEncoder_IO
+ * \sa IMG_CreateAnimationEncoderWithProperties
+ * \sa IMG_CloseAnimationEncoder
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_AddAnimationEncoderFrame(IMG_AnimationEncoder *encoder, SDL_Surface *surface, Uint64 duration);
+
+/**
+ * Close an animation encoder, finishing any encoding.
+ *
+ * Calling this function frees the animation encoder, and returns the final
+ * status of the encoding process.
+ *
+ * \param encoder the encoder to close.
+ * \returns true on success or false on failure; call SDL_GetError() for more
+ *          information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_CreateAnimationEncoder
+ * \sa IMG_CreateAnimationEncoder_IO
+ * \sa IMG_CreateAnimationEncoderWithProperties
+ */
+extern SDL_DECLSPEC bool SDLCALL IMG_CloseAnimationEncoder(IMG_AnimationEncoder *encoder);
+
+/**
+ * An enum representing the status of an animation decoder.
+ *
+ * \since This enum is available since SDL_image 3.4.0.
+ */
+typedef enum IMG_AnimationDecoderStatus
+{
+    IMG_DECODER_STATUS_INVALID = -1,    /**< The decoder is invalid */
+    IMG_DECODER_STATUS_OK,              /**< The decoder is ready to decode the next frame */
+    IMG_DECODER_STATUS_FAILED,          /**< The decoder failed to decode a frame, call SDL_GetError() for more information. */
+    IMG_DECODER_STATUS_COMPLETE         /**< No more frames available */
+} IMG_AnimationDecoderStatus;
+
+/**
+ * An object representing animation decoder.
+ */
+typedef struct IMG_AnimationDecoder IMG_AnimationDecoder;
+
+/**
+ * Create a decoder to read a series of images from a file.
+ *
+ * The file type is determined from the file extension, e.g. "file.webp" will
+ * be decoded using WEBP.
+ *
+ * \param file the file containing a series of images.
+ * \returns a new IMG_AnimationDecoder, or NULL on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_CreateAnimationDecoder_IO
+ * \sa IMG_CreateAnimationDecoderWithProperties
+ * \sa IMG_GetAnimationDecoderFrame
+ * \sa IMG_ResetAnimationDecoder
+ * \sa IMG_CloseAnimationDecoder
+ */
+extern SDL_DECLSPEC IMG_AnimationDecoder * SDLCALL IMG_CreateAnimationDecoder(const char *file);
+
+/**
+ * Create a decoder to read a series of images from an IOStream.
+ *
+ * If `closeio` is true, `src` will be closed before returning if this
+ * function fails, or when the animation decoder is closed if this function
+ * succeeds.
+ *
+ * \param src an SDL_IOStream containing a series of images.
+ * \param closeio true to close the SDL_IOStream when done, false to leave it
+ *                open.
+ * \param type a filename extension that represent this data ("WEBP", etc).
+ * \returns a new IMG_AnimationDecoder, or NULL on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_CreateAnimationDecoder
+ * \sa IMG_CreateAnimationDecoderWithProperties
+ * \sa IMG_GetAnimationDecoderFrame
+ * \sa IMG_ResetAnimationDecoder
+ * \sa IMG_CloseAnimationDecoder
+ */
+extern SDL_DECLSPEC IMG_AnimationDecoder * SDLCALL IMG_CreateAnimationDecoder_IO(SDL_IOStream *src, bool closeio, const char *type);
+
+/**
+ * Create an animation decoder with the specified properties.
+ *
+ * These are the supported properties:
+ *
+ * - `IMG_PROP_ANIMATION_DECODER_CREATE_FILENAME_STRING`: the file to load, if
+ *   an SDL_IOStream isn't being used. This is required if
+ *   `IMG_PROP_ANIMATION_DECODER_CREATE_IOSTREAM_POINTER` isn't set.
+ * - `IMG_PROP_ANIMATION_DECODER_CREATE_IOSTREAM_POINTER`: an SDL_IOStream
+ *   containing a series of images. This should not be closed until the
+ *   animation decoder is closed. This is required if
+ *   `IMG_PROP_ANIMATION_DECODER_CREATE_FILENAME_STRING` isn't set.
+ * - `IMG_PROP_ANIMATION_DECODER_CREATE_IOSTREAM_AUTOCLOSE_BOOLEAN`: true if
+ *   closing the animation decoder should also close the associated
+ *   SDL_IOStream.
+ * - `IMG_PROP_ANIMATION_DECODER_CREATE_TYPE_STRING`: the input file type,
+ *   e.g. "webp", defaults to the file extension if
+ *   `IMG_PROP_ANIMATION_DECODER_CREATE_FILENAME_STRING` is set.
+ *
+ * \param props the properties of the animation decoder.
+ * \returns a new IMG_AnimationDecoder, or NULL on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_CreateAnimationDecoder
+ * \sa IMG_CreateAnimationDecoder_IO
+ * \sa IMG_GetAnimationDecoderFrame
+ * \sa IMG_ResetAnimationDecoder
+ * \sa IMG_CloseAnimationDecoder
+ */
+extern SDL_DECLSPEC IMG_AnimationDecoder * SDLCALL IMG_CreateAnimationDecoderWithProperties(SDL_PropertiesID props);
+
+#define IMG_PROP_ANIMATION_DECODER_CREATE_FILENAME_STRING                "SDL_image.animation_decoder.create.filename"
+#define IMG_PROP_ANIMATION_DECODER_CREATE_IOSTREAM_POINTER               "SDL_image.animation_decoder.create.iostream"
+#define IMG_PROP_ANIMATION_DECODER_CREATE_IOSTREAM_AUTOCLOSE_BOOLEAN     "SDL_image.animation_decoder.create.iostream.autoclose"
+#define IMG_PROP_ANIMATION_DECODER_CREATE_TYPE_STRING                    "SDL_image.animation_decoder.create.type"
+#define IMG_PROP_ANIMATION_DECODER_CREATE_TIMEBASE_NUMERATOR_NUMBER      "SDL_image.animation_decoder.create.timebase.numerator"
+#define IMG_PROP_ANIMATION_DECODER_CREATE_TIMEBASE_DENOMINATOR_NUMBER    "SDL_image.animation_decoder.create.timebase.denominator"
+
+/**
+ * Get the properties of an animation decoder.
+ *
+ * This function returns the properties of the animation decoder, which holds
+ * information about the underlying image such as description, copyright text
+ * and loop count.
+ *
+ * \param decoder the animation decoder.
+ * \returns the properties ID of the animation decoder, or 0 if there are no
+ *          properties; call SDL_GetError() for more information.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_CreateAnimationDecoder
+ * \sa IMG_CreateAnimationDecoder_IO
+ * \sa IMG_CreateAnimationDecoderWithProperties
+ */
+extern SDL_DECLSPEC SDL_PropertiesID SDLCALL IMG_GetAnimationDecoderProperties(IMG_AnimationDecoder* decoder);
+
+#define IMG_PROP_METADATA_IGNORE_PROPS_BOOLEAN                 "SDL_image.metadata.ignore_props"
+#define IMG_PROP_METADATA_DESCRIPTION_STRING                   "SDL_image.metadata.description"
+#define IMG_PROP_METADATA_COPYRIGHT_STRING                     "SDL_image.metadata.copyright"
+#define IMG_PROP_METADATA_TITLE_STRING                         "SDL_image.metadata.title"
+#define IMG_PROP_METADATA_AUTHOR_STRING                        "SDL_image.metadata.author"
+#define IMG_PROP_METADATA_CREATION_TIME_STRING                 "SDL_image.metadata.creation_time"
+#define IMG_PROP_METADATA_LOOP_COUNT_NUMBER                    "SDL_image.metadata.loop_count"
+
+/**
+ * Get the next frame in an animation decoder.
+ *
+ * This function decodes the next frame in the animation decoder, returning it
+ * as an SDL_Surface. The returned surface should be freed with
+ * SDL_FreeSurface() when no longer needed.
+ *
+ * If the animation decoder has no more frames or an error occurred while
+ * decoding the frame, this function returns false. In that case, please call
+ * SDL_GetError() for more information. If SDL_GetError() returns an empty
+ * string, that means there are no more available frames. If SDL_GetError()
+ * returns a valid string, that means the decoding failed.
+ *
+ * \param decoder the animation decoder.
+ * \param frame a pointer filled in with the SDL_Surface for the next frame in
+ *              the animation.
+ * \param duration the duration of the frame, usually in milliseconds but can
+ *                 be other units if the
+ *                 `IMG_PROP_ANIMATION_DECODER_CREATE_TIMEBASE_DENOMINATOR_NUMBER`
+ *                 property is set when creating the decoder.
+ * \returns true on success or false on failure and when no more frames are
+ *          available; call IMG_GetAnimationDecoderStatus() or SDL_GetError()
  *          for more information.
  *
  * \since This function is available since SDL_image 3.4.0.
  *
- * \sa IMG_CreateAnimationStream
- * \sa IMG_CreateAnimationStream_IO
- * \sa IMG_AddAnimationFrame
- * \sa IMG_CloseAnimationStream
+ * \sa IMG_CreateAnimationDecoder
+ * \sa IMG_CreateAnimationDecoder_IO
+ * \sa IMG_CreateAnimationDecoderWithProperties
+ * \sa IMG_GetAnimationDecoderStatus
+ * \sa IMG_ResetAnimationDecoder
+ * \sa IMG_CloseAnimationDecoder
  */
-extern SDL_DECLSPEC IMG_AnimationStream * SDLCALL IMG_CreateAnimationStreamWithProperties(SDL_PropertiesID props);
-
-#define IMG_PROP_ANIMATION_STREAM_CREATE_FILENAME_STRING                "SDL_image.animation_stream.create.filename"
-#define IMG_PROP_ANIMATION_STREAM_CREATE_IOSTREAM_POINTER               "SDL_image.animation_stream.create.iostream"
-#define IMG_PROP_ANIMATION_STREAM_CREATE_IOSTREAM_AUTOCLOSE_BOOLEAN     "SDL_image.animation_stream.create.iostream.autoclose"
-#define IMG_PROP_ANIMATION_STREAM_CREATE_TYPE_STRING                    "SDL_image.animation_stream.create.type"
-#define IMG_PROP_ANIMATION_STREAM_CREATE_QUALITY_NUMBER                 "SDL_image.animation_stream.create.quality"
-#define IMG_PROP_ANIMATION_STREAM_CREATE_TIMEBASE_NUMERATOR_NUMBER      "SDL_image.animation_stream.create.timebase.numerator"
-#define IMG_PROP_ANIMATION_STREAM_CREATE_TIMEBASE_DENOMINATOR_NUMBER    "SDL_image.animation_stream.create.timebase.denominator"
+extern SDL_DECLSPEC bool SDLCALL IMG_GetAnimationDecoderFrame(IMG_AnimationDecoder *decoder, SDL_Surface **frame, Uint64 *duration);
 
 /**
- * Add a frame to a stream of images being saved.
+ * Get the decoder status indicating the current state of the decoder.
  *
- * \param stream the stream receiving images.
- * \param surface the surface to add as the next frame in the animation.
- * \param pts the presentation timestamp of the frame, usually in milliseconds
- *            but can be other units if the
- *            `IMG_PROP_ANIMATION_STREAM_CREATE_TIMEBASE_DENOMINATOR_NUMBER`
- *            property is set when creating the stream.
+ * \param decoder the decoder to get the status of.
+ * \returns the status of the underlying decoder, or
+ *          IMG_DECODER_STATUS_INVALID if the given decoder is invalid.
+ *
+ * \since This function is available since SDL_image 3.4.0.
+ *
+ * \sa IMG_GetAnimationDecoderFrame
+ */
+extern SDL_DECLSPEC IMG_AnimationDecoderStatus SDLCALL IMG_GetAnimationDecoderStatus(IMG_AnimationDecoder *decoder);
+
+/**
+ * Reset an animation decoder.
+ *
+ * Calling this function resets the animation decoder, allowing it to start
+ * from the beginning again. This is useful if you want to decode the frame
+ * sequence again without creating a new decoder.
+ *
+ * \param decoder the decoder to reset.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
  * \since This function is available since SDL_image 3.4.0.
  *
- * \sa IMG_CreateAnimationStream
- * \sa IMG_CreateAnimationStream_IO
- * \sa IMG_CreateAnimationStreamWithProperties
+ * \sa IMG_CreateAnimationDecoder
+ * \sa IMG_CreateAnimationDecoder_IO
+ * \sa IMG_CreateAnimationDecoderWithProperties
+ * \sa IMG_GetAnimationDecoderFrame
+ * \sa IMG_CloseAnimationDecoder
  */
-extern SDL_DECLSPEC bool SDLCALL IMG_AddAnimationFrame(IMG_AnimationStream *stream, SDL_Surface *surface, Uint64 pts);
+extern SDL_DECLSPEC bool SDLCALL IMG_ResetAnimationDecoder(IMG_AnimationDecoder *decoder);
 
 /**
- * Close an animation stream, finishing any encoding.
+ * Close an animation decoder, finishing any decoding.
  *
- * Calling this function frees the animation stream, and returns the final
- * status of the encoding process.
+ * Calling this function frees the animation decoder, and returns the final
+ * status of the decoding process.
  *
- * \param stream the stream to close.
+ * \param decoder the decoder to close.
  * \returns true on success or false on failure; call SDL_GetError() for more
  *          information.
  *
  * \since This function is available since SDL_image 3.4.0.
  *
- * \sa IMG_CreateAnimationStream
- * \sa IMG_CreateAnimationStream_IO
- * \sa IMG_CreateAnimationStreamWithProperties
+ * \sa IMG_CreateAnimationDecoder
+ * \sa IMG_CreateAnimationDecoder_IO
+ * \sa IMG_CreateAnimationDecoderWithProperties
  */
-extern SDL_DECLSPEC bool SDLCALL IMG_CloseAnimationStream(IMG_AnimationStream *stream);
+extern SDL_DECLSPEC bool SDLCALL IMG_CloseAnimationDecoder(IMG_AnimationDecoder *decoder);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
