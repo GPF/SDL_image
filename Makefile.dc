@@ -16,12 +16,12 @@ OBJS = IMG_gif.o IMG_jpg.o IMG_bmp.o IMG_lbm.o IMG_png.o \
 TEST_OBJS = showdcimage.o romdisk.o
 
 # Default target
-all: $(LIB_TARGET) $(TEST_TARGET)
+all: copy_headers $(LIB_TARGET) $(TEST_TARGET)
 
 include $(KOS_BASE)/Makefile.rules
 
 # Compiler flags
-KOS_CFLAGS += -D__DREAMCAST__=1 -I$(KOS_BASE)/addons/include/SDL \
+KOS_CFLAGS += -D__DREAMCAST__=1 -I$(KOS_BASE)/addons/include/dreamcast/SDL \
               -I$(KOS_PORTS)/include/png \
               -DLOAD_BMP=1 -DLOAD_GIF=1 -DLOAD_LBM=1 \
               -DLOAD_PCX=1 -DLOAD_PNM=1 -DLOAD_TGA=1 \
@@ -40,6 +40,11 @@ $(TEST_TARGET): $(TEST_OBJS)
 	kos-cc -o $(TEST_TARGET) $(TEST_OBJS) \
 		-L$(KOS_BASE)/addons/lib/dreamcast \
 		-lSDLPVR_image -lSDL -lpng -lz -lm
+
+copy_headers:
+	@mkdir -p $(KOS_BASE)/addons/include/dreamcast/SDL
+	@cp SDL_image.h $(KOS_BASE)/addons/include/dreamcast/SDL/
+	@echo "Copied SDL_image.h to $(KOS_BASE)/addons/include/dreamcast/SDL/"
 
 run: $(TEST_TARGET)
 	flycast $(TEST_TARGET)
