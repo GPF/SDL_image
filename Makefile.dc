@@ -21,7 +21,7 @@ all: copy_headers $(LIB_TARGET) $(TEST_TARGET)
 include $(KOS_BASE)/Makefile.rules
 
 # Compiler flags
-KOS_CFLAGS += -D__DREAMCAST__=1 -I$(KOS_BASE)/addons/include/dreamcast/SDL \
+KOS_CFLAGS += -D__DREAMCAST__=1 -I$(KOS_BASE)/addons/include/SDL \
               -I$(KOS_PORTS)/include/png \
               -DLOAD_BMP=1 -DLOAD_GIF=1 -DLOAD_LBM=1 \
               -DLOAD_PCX=1 -DLOAD_PNM=1 -DLOAD_TGA=1 \
@@ -42,9 +42,9 @@ $(TEST_TARGET): $(TEST_OBJS)
 		-lSDLPVR_image -lSDL -lpng -lz -lm
 
 copy_headers:
-	@mkdir -p $(KOS_BASE)/addons/include/dreamcast/SDL
+	@mkdir -p $(KOS_BASE)/addons/include/SDL
 	@cp SDL_image.h $(KOS_BASE)/addons/include/dreamcast/SDL/
-	@echo "Copied SDL_image.h to $(KOS_BASE)/addons/include/dreamcast/SDL/"
+	@echo "Copied SDL_image.h to $(KOS_BASE)/addons/include/SDL/"
 
 run: $(TEST_TARGET)
 	flycast $(TEST_TARGET)
