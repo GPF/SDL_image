@@ -22,6 +22,10 @@ project(SDL2_image
 
 message(STATUS "Configuring ${PROJECT_NAME} ${PROJECT_VERSION}")
 
+if(__DREAMCAST__ OR PLATFORM_DREAMCAST)
+    include(kallistios)
+endif()
+
 if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
     set(SDL2IMAGE_ROOTPROJECT ON)
 else()
